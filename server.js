@@ -71,6 +71,27 @@ async function handleTgSend(req,res){
   return sendJson(res,j.ok?200:502,{ok:!!j.ok,error:j.description});
 }
 
+/* ---------- извлечение текста из файла (PDF и т.п.) ---------- */
+async function handleExtract(req,res){
+  const b=await readBody(req); let d={}; try{ d=JSON.parse(b||"{}"); }catch(e){ return sendJson(res,400,{ok:false,error:"bad json"}); }
+  if(!d.base64) return sendJson(res,400,{ok:false,error:"нет файла"});
+  const name=(d.name||"").toLowerCase();
+  try{
+    const buf=Buffer.from(d.base64,"base64");
+    if(name.endsWith(".pdf")){
+      try{
+        const { extractText, getDocumentProxy } = await import("unpdf");
+        const pdf=await getDocumentProxy(new Uint8Array(buf));
+        const out=await extractText(pdf,{mergePages:true});
+        const text=(Array.isArray(out.text)?out.text.join("\n"):(out.text||"")).replace(/\n{3,}/g,"\n\n").trim();
+        if(!text) return sendJson(res,200,{ok:false,error:"в PDF не найден текст (возможно, это скан)"});
+        return sendJson(res,200,{ok:true,text:text.slice(0,20000)});
+      }catch(e){ return sendJson(res,502,{ok:false,error:"Не удалось прочитать PDF: "+(e.message||e)}); }
+    }
+    return sendJson(res,200,{ok:true,text:buf.toString("utf8").slice(0,20000)});
+  }catch(e){ return sendJson(res,502,{ok:false,error:"Не удалось прочитать файл: "+(e.message||e)}); }
+}
+
 /* ---------- транскрипция аудио (Whisper) ---------- */
 async function handleTranscribe(req,res){
   if(!OPENAI_API_KEY) return sendJson(res,500,{ok:false,error:"OPENAI_API_KEY не задан на сервере"});
@@ -137,14 +158,25 @@ async function handleParse(req,res){
   if(!apiPath) return sendJson(res,400,{ok:false,error:"Неизвестный тип источника"});
   if(!p.url) return sendJson(res,400,{ok:false,error:"Не передан url"});
   if(!PARSER_API_KEY) return sendJson(res,500,{ok:false,error:"PARSER_API_KEY не задан"});
-  try{
-    const r=await fetch(`${PARSER_BASE}${apiPath}?url=${encodeURIComponent(p.url)}`,{ method:"POST", headers:{ Authorization:PARSER_API_KEY, accept:"application/json" } });
-    const txt=await r.text(); let data; try{ data=JSON.parse(txt); }catch(e){ data={raw:txt}; }
-    usage.parseRequests+=1; saveUsage();
-    if(!r.ok) return sendJson(res,502,{ok:false,error:`Парсер вернул ${r.status}`,detail:(data&&(data.detail||data.error))||txt.slice(0,300)});
-    if(p.type==="website"&&data&&typeof data.html==="string") data={source:data.source,url:data.url,text:htmlToText(data.html),error:data.error};
-    return sendJson(res,200,{ok:true,type:p.type,data});
-  }catch(err){ return sendJson(res,502,{ok:false,error:"Ошибка запроса к парсеру: "+(err.message||err)}); }
+  // ретраи: Instagram/сайты бывают флапают из-за анти-бота
+  const attempts = p.type==="instagram" ? 3 : 2;
+  let lastErr="";
+  for(let a=0;a<attempts;a++){
+    try{
+      if(a>0) await new Promise(r=>setTimeout(r,1500));
+      const r=await fetch(`${PARSER_BASE}${apiPath}?url=${encodeURIComponent(p.url)}`,{ method:"POST", headers:{ Authorization:PARSER_API_KEY, accept:"application/json" } });
+      const txt=await r.text(); let data; try{ data=JSON.parse(txt); }catch(e){ data={raw:txt}; }
+      if(!r.ok){ lastErr=`парсер вернул ${r.status}`; continue; }
+      if(data && data.error){ lastErr=String(data.error); continue; }
+      if(p.type==="instagram" && !(data && data.ig_username)){ lastErr="instagram: пусто"; continue; }
+      if(p.type==="2gis" && !(data && data.company_name)){ lastErr="2gis: пусто"; continue; }
+      usage.parseRequests+=1; saveUsage();
+      if(p.type==="website"&&data&&typeof data.html==="string") data={source:data.source,url:data.url,text:htmlToText(data.html),error:data.error};
+      return sendJson(res,200,{ok:true,type:p.type,data});
+    }catch(err){ lastErr=err.message||String(err); }
+  }
+  usage.parseRequests+=1; saveUsage();
+  return sendJson(res,502,{ok:false,error:"Не удалось получить данные ("+lastErr+")"});
 }
 
 /* ---------- /api/llm (прокси к провайдеру, ключи из env) ---------- */
@@ -197,6 +229,7 @@ http.createServer(async (req,res)=>{
     if(req.method==="POST" && p==="/api/telegram/link") return handleTgLink(req,res);
     if(req.method==="POST" && p==="/api/telegram/send") return handleTgSend(req,res);
     if(req.method==="POST" && p==="/api/transcribe") return handleTranscribe(req,res);
+    if(req.method==="POST" && p==="/api/extract") return handleExtract(req,res);
     return sendJson(res,404,{ ok:false, error:"unknown endpoint" });
   }
 

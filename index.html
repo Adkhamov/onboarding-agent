@@ -596,7 +596,7 @@ function renderSources(el){
     </div>
     <div class="src-err" id="srcErr"></div>
     <div style="display:flex;gap:8px;margin:2px 0 8px;flex-wrap:wrap">
-      <label class="btn btn-ghost" style="cursor:pointer">📎 Добавить файл<input type="file" id="srcFile" accept=".txt,.md,.markdown,.csv,.json,.text,.log" style="display:none"></label>
+      <label class="btn btn-ghost" style="cursor:pointer">📎 Добавить файл<input type="file" id="srcFile" accept=".txt,.md,.markdown,.csv,.json,.text,.log,.pdf" style="display:none"></label>
       <button class="btn btn-ghost" id="srcTextBtn">✍️ Вставить текст</button>
     </div>
     <div id="srcTextWrap" style="display:none;margin-bottom:8px">
@@ -606,15 +606,29 @@ function renderSources(el){
     <div class="src-list" id="srcList"></div>
     <div id="srcStatus"></div>
     <div id="parseArea"></div>
-    <div class="hintbox">💡 Протокол http://, https://, www — писать не нужно, уберём сами. Можно добавить файл (.txt, .md, .csv) или вставить текст. Больше источников = точнее агент.</div>`;
+    <div class="hintbox">💡 Протокол http://, https://, www — писать не нужно, уберём сами. Можно добавить файл (.pdf, .txt, .md, .csv) или вставить текст. Больше источников = точнее агент.</div>`;
   const inp=el.querySelector("#srcInput"),err=el.querySelector("#srcErr"),typeSel=el.querySelector("#srcType");
   // файл
-  el.querySelector("#srcFile").addEventListener("change",e=>{
+  el.querySelector("#srcFile").addEventListener("change",async e=>{
     const f=e.target.files[0]; if(!f) return;
-    if(f.size>2e6){err.textContent="Файл слишком большой (макс 2 МБ)";return;}
-    const rd=new FileReader();
-    rd.onload=()=>{ state.sources.push({id:Date.now()+""+Math.random(),type:"file",clean:f.name,text:(rd.result||"").slice(0,20000)}); drawSources();updateAgent(); };
-    rd.readAsText(f); e.target.value="";
+    if(f.size>10e6){err.textContent="Файл слишком большой (макс 10 МБ)";e.target.value="";return;}
+    err.textContent="";
+    const nm=f.name.toLowerCase();
+    if(nm.endsWith(".pdf")){
+      toast("Читаю PDF…");
+      try{
+        const b64=await new Promise(r=>{const rd=new FileReader();rd.onload=()=>r((rd.result+"").split(",")[1]);rd.readAsDataURL(f);});
+        const resp=await fetch("/api/extract",{method:"POST",headers:apiHeaders(),body:JSON.stringify({name:f.name,base64:b64})});
+        const j=await resp.json();
+        if(j.ok&&(j.text||"").trim()){ state.sources.push({id:Date.now()+""+Math.random(),type:"file",clean:f.name,text:j.text.slice(0,20000)}); drawSources();updateAgent(); toast("PDF добавлен ✓"); }
+        else err.textContent="Не удалось прочитать PDF: "+(j.error||"пусто");
+      }catch(ex){ err.textContent="Ошибка чтения PDF"; }
+    }else{
+      const rd=new FileReader();
+      rd.onload=()=>{ state.sources.push({id:Date.now()+""+Math.random(),type:"file",clean:f.name,text:(rd.result||"").slice(0,20000)}); drawSources();updateAgent(); };
+      rd.readAsText(f);
+    }
+    e.target.value="";
   });
   // вставить текст
   el.querySelector("#srcTextBtn").onclick=()=>{const w=el.querySelector("#srcTextWrap");w.style.display=w.style.display==="none"?"block":"none";};
