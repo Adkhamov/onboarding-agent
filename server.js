@@ -10,6 +10,7 @@ const USAGE_FILE = path.join(DATA_DIR, "usage.json");
 
 const PARSER_BASE = process.env.PARSER_BASE || "https://api.parser.digitalocean.mooonai.com";
 const PARSER_API_KEY = process.env.PARSER_API_KEY || "";
+const TWOGIS_API_KEY = process.env.TWOGIS_API_KEY || ""; // ключ официального Catalog API 2ГИС (наш парсер)
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "";
 const SITE_PASSWORD = process.env.SITE_PASSWORD || "";
@@ -49,9 +50,45 @@ function htmlToText(html){ if(!html) return ""; return html
   .replace(/<[^>]+>/g," ").replace(/&nbsp;/g," ").replace(/&amp;/g,"&").replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/&lt;/g,"<").replace(/&gt;/g,">")
   .replace(/\s+/g," ").trim().slice(0,15000); }
 
+/* ---------- свой парсер 2ГИС через официальный Catalog API ---------- */
+function extract2gisId(url){
+  const m=(url||"").match(/\/firm\/(\d+)/)||(url||"").match(/\/geo\/(\d+)/)||(url||"").match(/(\d{10,})/);
+  return m?m[1]:null;
+}
+function summarizeSchedule(s){
+  if(!s) return null;
+  if(s.is_24x7) return "круглосуточно";
+  const days={Mon:"Пн",Tue:"Вт",Wed:"Ср",Thu:"Чт",Fri:"Пт",Sat:"Сб",Sun:"Вс"};
+  const parts=[];
+  Object.keys(days).forEach(k=>{ const d=s[k]; if(d&&Array.isArray(d.working_hours)&&d.working_hours.length){ parts.push(`${days[k]} ${d.working_hours.map(w=>`${w.from}–${w.to}`).join(",")}`); } });
+  return parts.join("; ")||null;
+}
+async function parse2gisOwn(url){
+  const id=extract2gisId(url);
+  if(!id) throw new Error("не удалось определить id фирмы из ссылки 2ГИС");
+  const fields="items.point,items.address,items.schedule,items.contact_groups,items.rubrics,items.name_ex,items.description";
+  const api=`https://catalog.api.2gis.com/3.0/items/byid?id=${id}&key=${TWOGIS_API_KEY}&fields=${encodeURIComponent(fields)}&locale=ru_KZ`;
+  const r=await fetch(api); const j=await r.json();
+  const item=j&&j.result&&Array.isArray(j.result.items)&&j.result.items[0];
+  if(!item) throw new Error("фирма не найдена в 2ГИС ("+((j&&j.meta&&j.meta.error&&j.meta.error.message)||"нет данных")+")");
+  let phone=null;
+  (item.contact_groups||[]).forEach(g=>(g.contacts||[]).forEach(c=>{ if(!phone&&c.type==="phone") phone=c.text||c.value; }));
+  return { source:"2gis", parsed_at:new Date().toISOString(),
+    company_name:item.name||(item.name_ex&&item.name_ex.primary)||null,
+    company_category:(item.rubrics&&item.rubrics[0]&&item.rubrics[0].name)||null,
+    company_address:item.address_name||(item.address&&item.address.name)||null,
+    branches_count:null, working_hours:summarizeSchedule(item.schedule),
+    phone_number:phone||null, error:null };
+}
+
 /* ---------- /api/parse ---------- */
 async function handleParse(req,res){
   const body=await readBody(req); let p={}; try{ p=JSON.parse(body||"{}"); }catch(e){ return sendJson(res,400,{ok:false,error:"Некорректный JSON"}); }
+  // свой парсер 2ГИС (если задан ключ) — с фолбэком на MoonAI
+  if(p.type==="2gis" && TWOGIS_API_KEY && p.url){
+    try{ const data=await parse2gisOwn(p.url); usage.parseRequests+=1; saveUsage(); return sendJson(res,200,{ok:true,type:"2gis",engine:"own",data}); }
+    catch(e){ console.error("2gis own failed, fallback:",e.message); }
+  }
   const apiPath=PARSER_PATHS[p.type];
   if(!apiPath) return sendJson(res,400,{ok:false,error:"Неизвестный тип источника"});
   if(!p.url) return sendJson(res,400,{ok:false,error:"Не передан url"});
@@ -100,7 +137,7 @@ http.createServer(async (req,res)=>{
   const p=(req.url||"/").split("?")[0];
 
   if(p==="/api/health"){ return sendJson(res,200,{ ok:true, parser_key:!!PARSER_API_KEY, needs_auth:!!SITE_PASSWORD,
-    keys:{ openai:!!OPENAI_API_KEY, anthropic:!!ANTHROPIC_API_KEY } }); }
+    twogis_own:!!TWOGIS_API_KEY, keys:{ openai:!!OPENAI_API_KEY, anthropic:!!ANTHROPIC_API_KEY } }); }
 
   if(req.method==="POST" && p==="/api/login"){
     const b=await readBody(req); let d={}; try{ d=JSON.parse(b||"{}"); }catch(e){}

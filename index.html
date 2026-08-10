@@ -508,7 +508,7 @@ function editableText(el,onSave){
 }
 
 /* ================= ИСТОЧНИКИ ================= */
-const SRC_META={website:{icon:"🌐",label:"Сайт"},"2gis":{icon:"📍",label:"2ГИС"},instagram:{icon:"📸",label:"Instagram"}};
+const SRC_META={website:{icon:"🌐",label:"Сайт"},"2gis":{icon:"📍",label:"2ГИС"},instagram:{icon:"📸",label:"Instagram"},file:{icon:"📄",label:"Файл/текст"}};
 function detectType(c){ if(/2gis/i.test(c))return"2gis"; if(/instagram\.com/i.test(c)||c.startsWith("@"))return"instagram"; return"website"; }
 function normalize(raw,type){
   let s=(raw||"").trim(); if(!s)return{error:"Введите ссылку"};
@@ -527,11 +527,31 @@ function renderSources(el){
       <button class="btn btn-primary" id="srcAdd">Добавить</button>
     </div>
     <div class="src-err" id="srcErr"></div>
+    <div style="display:flex;gap:8px;margin:2px 0 8px;flex-wrap:wrap">
+      <label class="btn btn-ghost" style="cursor:pointer">📎 Добавить файл<input type="file" id="srcFile" accept=".txt,.md,.markdown,.csv,.json,.text,.log" style="display:none"></label>
+      <button class="btn btn-ghost" id="srcTextBtn">✍️ Вставить текст</button>
+    </div>
+    <div id="srcTextWrap" style="display:none;margin-bottom:8px">
+      <textarea id="srcText" placeholder="Вставьте любой текст о компании: услуги, цены, условия, УТП..."></textarea>
+      <button class="btn btn-primary" id="srcTextAdd" style="margin-top:6px;height:34px">Добавить текст</button>
+    </div>
     <div class="src-list" id="srcList"></div>
     <div id="srcStatus"></div>
     <div id="parseArea"></div>
-    <div class="hintbox">💡 Протокол http://, https://, www — писать не нужно, уберём сами. Больше источников = точнее агент.</div>`;
+    <div class="hintbox">💡 Протокол http://, https://, www — писать не нужно, уберём сами. Можно добавить файл (.txt, .md, .csv) или вставить текст. Больше источников = точнее агент.</div>`;
   const inp=el.querySelector("#srcInput"),err=el.querySelector("#srcErr"),typeSel=el.querySelector("#srcType");
+  // файл
+  el.querySelector("#srcFile").addEventListener("change",e=>{
+    const f=e.target.files[0]; if(!f) return;
+    if(f.size>2e6){err.textContent="Файл слишком большой (макс 2 МБ)";return;}
+    const rd=new FileReader();
+    rd.onload=()=>{ state.sources.push({id:Date.now()+""+Math.random(),type:"file",clean:f.name,text:(rd.result||"").slice(0,20000)}); drawSources();updateAgent(); };
+    rd.readAsText(f); e.target.value="";
+  });
+  // вставить текст
+  el.querySelector("#srcTextBtn").onclick=()=>{const w=el.querySelector("#srcTextWrap");w.style.display=w.style.display==="none"?"block":"none";};
+  el.querySelector("#srcTextAdd").onclick=()=>{const ta=el.querySelector("#srcText");const v=ta.value.trim();if(!v)return;
+    state.sources.push({id:Date.now()+""+Math.random(),type:"file",clean:"Вставленный текст",text:v.slice(0,20000)});ta.value="";el.querySelector("#srcTextWrap").style.display="none";drawSources();updateAgent();};
   function add(){
     const r=normalize(inp.value,typeSel.value);
     if(r.error){err.textContent=r.error;return;}
@@ -575,6 +595,7 @@ async function runParsing(){
   setStep(1,"active");
   const results=[]; let okCount=0;
   for(const src of state.sources){
+    if(src.type==="file"){ results.push({type:"file",clean:src.clean,data:{text:src.text}}); chipStatus(src.id,"done","готово ✓"); okCount++; continue; }
     chipStatus(src.id,"run","собираю…");
     try{const r=await fetch("/api/parse",{method:"POST",headers:apiHeaders(),body:JSON.stringify({type:src.type,url:src.full})});
       const j=await r.json();
@@ -628,6 +649,7 @@ const GEN_SYS=`Ты помогаешь настроить ИИ-агента пр
 {"company_name":"","sphere":"","about":"","address":"","working_hours":"","prices":"","agent_names":["","",""],"goals":["","","",""],"styles":[{"title":"","example":""},{"title":"","example":""},{"title":"","example":""}],"restrictions":["","","","","",""],"faq":[{"q":"","a":""}],"unknown_options":["","",""],"data_fields":["","","",""],"languages":"","stop_topics":""}
 Правила:
 - company_name, about, sphere, address, working_hours, prices — ТОЛЬКО из предоставленных данных; если нет данных — оставь "".
+- company_name — это РЕАЛЬНОЕ название бизнеса. НЕ бери название каталога/справочника/агрегатора и не бери заголовок вкладки браузера (например «2ГИС», «Otzyv», «Instagram»). Если названия в источниках расходятся — выбери то, что похоже на официальное имя компании. Если уверенности нет — оставь "".
 - agent_names: 3 коротких имени-варианта для ассистента.
 - goals: 4 реалистичных целевых действия (КЭВ) для этой сферы.
 - styles: 3 разных тона. Пиши по-человечески, эмодзи — уместные и редкие (не в каждом сообщении). Один из вариантов — casual маленькими буквами. example — первое сообщение агента без канцелярита.
