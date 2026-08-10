@@ -145,6 +145,23 @@
   .sw.pos{background:var(--border-strong)}
   .sw.pos.on{background:var(--brand)}
   .tg-box{border:1px solid var(--border);border-radius:var(--r-lg);padding:14px;margin-top:10px;background:var(--surface-subtle)}
+  /* флоучарт этапов */
+  .flow{position:relative}
+  .stage{position:relative;padding-left:46px;margin-bottom:12px}
+  .stage::before{content:"";position:absolute;left:15px;top:36px;bottom:-14px;width:2px;background:var(--border)}
+  .stage:last-child::before{display:none}
+  .stage .node{position:absolute;left:0;top:2px;width:32px;height:32px;border-radius:9999px;background:var(--brand-tint);display:grid;place-items:center;font-size:15px;z-index:1;border:2px solid var(--bg);box-shadow:var(--sh-1)}
+  .stage .scard{border:1px solid var(--border);border-radius:var(--r-lg);background:var(--surface);box-shadow:var(--sh-1);overflow:hidden}
+  .stage .sh{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface-subtle);border-bottom:1px solid var(--border)}
+  .stage .sh input{border:none;background:transparent;font-weight:600;color:var(--text-strong);padding:0}
+  .stage .sh input:focus{box-shadow:none}
+  .stage .sbody{padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+  .stage .sbody textarea{min-height:36px;border-radius:6px;font-size:13px}
+  .stage .sbody input{height:32px;font-size:13px}
+  .stage .s-branch{color:#a4670f;background:var(--warning-tint)!important;border-color:#FFE0B8!important}
+  .stage .sactions{display:flex;gap:2px;margin-left:auto}
+  .stage .sact{border:none;background:transparent;color:var(--quiet);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:4px}
+  .stage .sact:hover{background:var(--fill-subtle);color:var(--text)}
   /* источники */
   .src-add{display:flex;gap:8px;margin-bottom:8px}
   .src-add select{width:112px;flex:none;height:38px}
@@ -251,6 +268,7 @@
     <div><b>MoonAI</b> <span class="sub">· создание AI-агента</span></div>
   </div>
   <div style="display:flex;gap:8px">
+    <button class="gear" id="agentsBtn" title="Мои агенты">💾</button>
     <button class="gear" id="usageBtn" title="Расход токенов">📊</button>
     <button class="gear" id="gearBtn" title="Настройки">⚙</button>
   </div>
@@ -312,6 +330,25 @@
   </div>
 </div>
 
+<!-- Мои агенты -->
+<div class="overlay" id="agentsOverlay">
+  <div class="modal">
+    <div class="modal-head"><h3>💾 Мои агенты</h3><button class="gear" id="agentsClose">✕</button></div>
+    <div class="modal-body">
+      <div class="field">
+        <label class="lbl">Сохранить текущего агента</label>
+        <div class="keyrow" style="display:flex;gap:8px"><input type="text" id="agentName2" placeholder="Название (напр. «Аврора · WhatsApp»)" style="flex:1"><button class="btn btn-primary" id="agentSave">Сохранить</button></div>
+      </div>
+      <div class="section-t" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--quiet);margin:16px 0 8px">Сохранённые</div>
+      <div id="agentsList"></div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn btn-ghost" id="agentExport">⬇ Экспорт JSON</button>
+        <label class="btn btn-ghost" style="cursor:pointer">⬆ Импорт JSON<input type="file" id="agentImport" accept=".json" style="display:none"></label>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Вход -->
 <div class="overlay" id="loginOverlay" style="background:#0b1020">
   <div class="modal" style="max-width:400px">
@@ -353,6 +390,14 @@ const DEFAULTS={
   languages:"Русский",
   stop_topics:"Политика, религия и посторонние темы. Не пишет код, стихи и не решает задачи вне сферы компании."
 };
+const DEFAULT_STAGES=[
+  {icon:"👋",title:"Приветствие",desc:"Поздороваться, представиться, тепло узнать, чем помочь.",msg:"здравствуйте! я {agent}, помощник {company} 🙂 чем могу помочь?",branch:""},
+  {icon:"🔍",title:"Квалификация",desc:"Задать 1–3 уточняющих вопроса: что нужно, для кого, сроки/бюджет.",msg:"",branch:"если клиент уже готов — сразу к целевому действию"},
+  {icon:"💡",title:"Ответ и презентация",desc:"Коротко ответить по сути, предложить решение, мягко закрыть сомнения.",msg:"",branch:"если вопрос вне знаний — передать менеджеру"},
+  {icon:"🎯",title:"Целевое действие",desc:"Подвести к КЭВ: предложить записаться / оставить заявку.",msg:"",branch:""},
+  {icon:"📩",title:"Сбор данных",desc:"Взять имя и телефон, подтвердить детали и вызвать save_lead.",msg:"",branch:""},
+  {icon:"🤝",title:"Передача менеджеру",desc:"Если нужен человек — вызвать escalate_to_human и успокоить клиента.",msg:"",branch:""}
+];
 const state={
   step:0,
   sources:[],
@@ -364,7 +409,8 @@ const state={
     companyName:"",sphere:"",about:"",agentName:"",avatar:"🤖",
     goal:"",style:"",restrictions:[],faq:[],unknown:"",dataFields:[],
     hours:"",geo:"",pricing:"",langs:"",disclose:"open",stoptopics:"",
-    escalate:{triggers:[],notify:[],sendFields:[]},telegram:{chat_id:null,name:""}
+    escalate:{triggers:[],notify:[],sendFields:[]},telegram:{chat_id:null,name:""},
+    stages:[]
   }
 };
 
@@ -378,6 +424,7 @@ const STEPS=[
   {id:"goal",cat:"Цель",title:"К чему агент ведёт клиента?",sub:"Главное целевое действие (КЭВ). Выберите вариант, дополните двойным кликом или впишите свой.",render:renderGoal},
   {id:"style",cat:"Стиль",title:"Как агент общается?",sub:"Выберите тон. Двойной клик по примеру — отредактировать под себя.",render:renderStyle},
   {id:"restrictions",cat:"Запреты",title:"Что агенту нельзя говорить",sub:"Только рабочие запреты. Красное = нельзя. Можно добавить своё.",render:renderRestrictions},
+  {id:"flow",cat:"Сценарий",title:"Этапы диалога с клиентом",sub:"Как агент ведёт разговор шаг за шагом. Меняйте порядок, редактируйте, добавляйте.",render:renderFlow},
   {id:"faq_q",cat:"FAQ · вопросы",title:"Какие вопросы задают чаще всего?",sub:"Отметьте частые вопросы клиентов и добавьте свои. Ответы напишем на следующем шаге.",render:renderFaqQ},
   {id:"faq_a",cat:"FAQ · ответы",title:"Ответы на вопросы",sub:"Впишите ответы, наговорите голосом 🎤 или сгенерируйте автоматически.",render:renderFaqA},
   {id:"handoff",cat:"Передача менеджеру",title:"Когда подключать живого человека",sub:"В каких случаях передавать диалог, как отвечать и куда слать уведомление.",render:renderHandoff},
@@ -814,6 +861,50 @@ function renderRestrictions(el){
   wireMagic(el,"restrMagic");
 }
 
+/* ================= ШАГ: СЦЕНАРИЙ ДИАЛОГА ================= */
+function renderFlow(el){
+  const D=state.data;
+  if(!D._stagesInit){ D.stages=DEFAULT_STAGES.map(s=>({...s})); D._stagesInit=true; }
+  el.innerHTML=`<div style="margin-bottom:14px"><button class="btn btn-magic" id="stGen">✨ Сгенерировать сценарий под нишу</button></div>
+    <div class="flow" id="flowList"></div>
+    <button class="btn btn-ghost" id="stAdd" style="margin-top:4px">+ Добавить этап</button>
+    <div class="hintbox">🗺️ Гибкий каркас: агент идёт примерно по этим этапам, подстраиваясь под клиента. «Ветка» — что делать в особом случае (если … то …).</div>`;
+  const list=el.querySelector("#flowList");
+  function draw(){list.innerHTML="";D.stages.forEach((s,i)=>{const d=document.createElement("div");d.className="stage";
+    d.innerHTML=`<div class="node">${s.icon||(i+1)}</div>
+      <div class="scard">
+        <div class="sh"><input class="s-title" value="${escA(s.title)}" placeholder="Название этапа">
+          <div class="sactions"><button class="sact" data-up title="Вверх">↑</button><button class="sact" data-down title="Вниз">↓</button><button class="sact" data-del title="Удалить">✕</button></div></div>
+        <div class="sbody">
+          <textarea class="s-desc" placeholder="Что делает агент на этом этапе">${esc(s.desc)}</textarea>
+          <input type="text" class="s-msg" value="${escA(s.msg)}" placeholder="Пример реплики (необязательно)">
+          <input type="text" class="s-branch" value="${escA(s.branch)}" placeholder="Ветка: если …, то …">
+        </div>
+      </div>`;
+    d.querySelector(".s-title").addEventListener("input",e=>s.title=e.target.value);
+    d.querySelector(".s-desc").addEventListener("input",e=>s.desc=e.target.value);
+    d.querySelector(".s-msg").addEventListener("input",e=>s.msg=e.target.value);
+    d.querySelector(".s-branch").addEventListener("input",e=>s.branch=e.target.value);
+    d.querySelector("[data-up]").onclick=()=>{if(i>0){const t=D.stages[i-1];D.stages[i-1]=D.stages[i];D.stages[i]=t;draw();}};
+    d.querySelector("[data-down]").onclick=()=>{if(i<D.stages.length-1){const t=D.stages[i+1];D.stages[i+1]=D.stages[i];D.stages[i]=t;draw();}};
+    d.querySelector("[data-del]").onclick=()=>{D.stages.splice(i,1);draw();};
+    list.appendChild(d);});}
+  draw();
+  el.querySelector("#stAdd").onclick=()=>{D.stages.push({icon:"•",title:"Новый этап",desc:"",msg:"",branch:""});draw();};
+  el.querySelector("#stGen").onclick=async(ev)=>{
+    const hasKey=health.keys&&(provider==="anthropic"?health.keys.anthropic:health.keys.openai);
+    if(!hasKey){toast("Ключ модели не задан на сервере");return;}
+    const b=ev.target;b.disabled=true;b.textContent="✨ Генерирую...";
+    try{
+      const sys=`Составь сценарий диалога ИИ-агента продаж/поддержки. Верни СТРОГО JSON-массив из 4–7 этапов вида [{"icon":"эмодзи","title":"","desc":"","msg":"пример реплики или пусто","branch":"если...то... или пусто"}] на русском. Логика: приветствие → квалификация → ответ/презентация → целевое действие → сбор данных → передача менеджеру, адаптируй под нишу и цель.`;
+      const u=`Ниша: ${D.niche||"—"}. Компания: ${D.companyName}. О компании: ${D.about}. Цель (КЭВ): ${D.goal}.`;
+      const txt=await callLLMOnce(sys,u,"suggestions",2000);
+      const m=txt.match(/\[[\s\S]*\]/);if(m){const arr=JSON.parse(m[0]);if(arr.length){D.stages=arr.map(s=>({icon:s.icon||"•",title:s.title||"",desc:s.desc||"",msg:s.msg||"",branch:s.branch||""}));draw();toast("Сценарий готов ✨");}}
+    }catch(e){toast("Не вышло — этапы можно задать вручную");}
+    b.disabled=false;b.textContent="✨ Сгенерировать сценарий под нишу";
+  };
+}
+
 /* ================= ШАГ: FAQ — вопросы ================= */
 function ensureFaqInit(){const D=state.data,S=state.suggestions;if(!D._faqInit){D.faq=(S.faq&&S.faq.length?S.faq:DEFAULTS.faq).map(f=>({q:f.q||"",a:f.a||""}));D._faqInit=true;}}
 function renderFaqQ(el){
@@ -990,7 +1081,7 @@ function renderFinish(el){
     <div class="seg" id="finTabs" style="margin-bottom:16px"><button data-t="chat" class="active">💬 Тест-чат</button><button data-t="prompt">📄 Промпт</button></div>
     <div id="finChat"></div>
     <div id="finPrompt" style="display:none"><textarea id="promptBox" style="min-height:320px;font-family:ui-monospace,Menlo,monospace;font-size:12px">${esc(prompt)}</textarea>
-      <div style="display:flex;gap:8px;margin-top:10px"><button class="btn btn-ghost" id="copyPrompt">Скопировать</button><button class="btn btn-ghost" id="restart">↺ Заново</button></div></div>
+      <div style="display:flex;gap:8px;margin-top:10px"><button class="btn btn-ghost" id="copyPrompt">Скопировать</button><button class="btn btn-primary" id="saveAgentFin">💾 Сохранить агента</button><button class="btn btn-ghost" id="restart">↺ Заново</button></div></div>
     <div class="footer-nav"><button class="btn btn-ghost" id="backBtn">← Назад</button><span></span></div>`;
   el.querySelector("#backBtn").onclick=back;
   el.querySelector("#finTabs").querySelectorAll("button").forEach(b=>b.onclick=()=>{
@@ -998,6 +1089,7 @@ function renderFinish(el){
     el.querySelector("#finChat").style.display=b.dataset.t==="chat"?"block":"none";
     el.querySelector("#finPrompt").style.display=b.dataset.t==="prompt"?"block":"none";});
   el.querySelector("#copyPrompt").onclick=()=>{const t=el.querySelector("#promptBox");t.select();document.execCommand("copy");toast("Промпт скопирован");};
+  el.querySelector("#saveAgentFin").onclick=openAgents;
   el.querySelector("#restart").onclick=()=>{if(confirm("Начать заново? Введённые данные сбросятся."))location.reload();};
   renderChat(el.querySelector("#finChat"),prompt);
 }
@@ -1023,6 +1115,8 @@ function buildPrompt(){
   p+=B("КАНАЛ ОБЩЕНИЯ",chText);
   p+=B("КОНТЕКСТ",[D.geo?("Город/адрес: "+D.geo):"",D.hours?("График: "+D.hours):"",D.currency?("Валюта: "+D.currency):"",D.timezone?("Часовой пояс: "+D.timezone):""].filter(Boolean).join("\n"));
   p+=B("ГЛАВНАЯ ЦЕЛЬ (КЭВ)",D.goal?D.goal+"\n\nВеди к этой цели естественно, не навязчиво. Сначала закрой вопросы и сомнения клиента.":"");
+  const stagesTxt=(D.stages||[]).map((s,i)=>`${i+1}. ${s.title}${s.desc?" — "+s.desc:""}${s.msg?`\n   Пример: «${s.msg}»`:""}${s.branch?`\n   Ветка: ${s.branch}`:""}`).join("\n").replace(/\{agent\}/g,agentName||"ассистент").replace(/\{company\}/g,company);
+  p+=B("СЦЕНАРИЙ ДИАЛОГА",stagesTxt?stagesTxt+"\n\nВеди диалог примерно по этим этапам, гибко подстраиваясь под клиента.":"");
   p+=B("ЗНАНИЯ / FAQ",faq);
   p+=B("ЦЕНЫ",D.pricing);
   p+=B("СТИЛЬ ОБЩЕНИЯ",[D.style,D.langs?("Языки: "+D.langs+" — отвечай на языке клиента."):"",disc].filter(Boolean).join("\n"));
@@ -1166,6 +1260,36 @@ async function loadUsage(){
       <div class="hint" style="margin-top:14px">Обновлено: ${u.updatedAt?new Date(u.updatedAt).toLocaleString("ru-RU"):"—"}. Стоимость — оценка по тарифам провайдеров.</div>`;
   }catch(e){body.innerHTML='<div class="src-err">Не удалось загрузить: '+(e.message||e)+'</div>';}
 }
+
+/* ---- мои агенты (сохранение) ---- */
+const agentsOverlay=document.getElementById("agentsOverlay");
+document.getElementById("agentsBtn").onclick=openAgents;
+document.getElementById("agentsClose").onclick=()=>agentsOverlay.classList.remove("show");
+agentsOverlay.onclick=e=>{if(e.target.id==="agentsOverlay")e.target.classList.remove("show");};
+function loadAgents(){try{return JSON.parse(localStorage.getItem("oa_agents")||"[]");}catch(e){return [];}}
+function saveAgentsLS(a){localStorage.setItem("oa_agents",JSON.stringify(a));}
+function snapshot(name){return {id:Date.now()+"",name,savedAt:new Date().toISOString(),step:state.step,data:state.data,sources:state.sources,suggestions:state.suggestions};}
+function openAgents(){agentsOverlay.classList.add("show");document.getElementById("agentName2").value=state.data.companyName||state.data.agentName||"";drawAgents();}
+function drawAgents(){
+  const list=document.getElementById("agentsList");const arr=loadAgents();
+  if(!arr.length){list.innerHTML='<div class="hint">Пока нет сохранённых агентов.</div>';return;}
+  list.innerHTML="";arr.slice().reverse().forEach(a=>{const d=document.createElement("div");d.className="chip";
+    d.innerHTML=`<div class="ic">${(a.data&&a.data.avatar)||"🤖"}</div><div class="meta"><div class="t">${esc(a.name)}</div><div class="s">${new Date(a.savedAt).toLocaleString("ru-RU")}</div></div>
+      <button class="btn btn-ghost" data-load style="height:30px">Открыть</button><button class="rm" data-del>×</button>`;
+    d.querySelector("[data-load]").onclick=()=>applyAgent(a);
+    d.querySelector("[data-del]").onclick=()=>{saveAgentsLS(loadAgents().filter(x=>x.id!==a.id));drawAgents();};
+    list.appendChild(d);});
+}
+document.getElementById("agentSave").onclick=()=>{const name=document.getElementById("agentName2").value.trim()||("Агент "+new Date().toLocaleDateString("ru-RU"));const arr=loadAgents();arr.push(snapshot(name));saveAgentsLS(arr);drawAgents();toast("Агент сохранён 💾");};
+function applyAgent(a){
+  state.data=Object.assign({},state.data,a.data||{});
+  state.sources=a.sources||[];state.suggestions=a.suggestions||state.suggestions;state.generated=true;
+  agentsOverlay.classList.remove("show");
+  go((a.step&&a.step>0)?a.step:STEPS.findIndex(s=>s.id==="finish"));
+  toast("Агент загружен");
+}
+document.getElementById("agentExport").onclick=()=>{const blob=new Blob([JSON.stringify(loadAgents(),null,2)],{type:"application/json"});const u=URL.createObjectURL(blob);const a=document.createElement("a");a.href=u;a.download="moonai-agents.json";a.click();URL.revokeObjectURL(u);};
+document.getElementById("agentImport").addEventListener("change",e=>{const f=e.target.files[0];if(!f)return;const rd=new FileReader();rd.onload=()=>{try{const imp=JSON.parse(rd.result);const arr=loadAgents();(Array.isArray(imp)?imp:[imp]).forEach(x=>arr.push(x));saveAgentsLS(arr);drawAgents();toast("Импортировано");}catch(e){toast("Не удалось прочитать файл");}};rd.readAsText(f);e.target.value="";});
 
 /* ---- вход по паролю ---- */
 const loginOverlay=document.getElementById("loginOverlay");
