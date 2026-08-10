@@ -14,6 +14,7 @@ const TWOGIS_API_KEY = process.env.TWOGIS_API_KEY || ""; // ключ офици�
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || "";
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "";
 const SITE_PASSWORD = process.env.SITE_PASSWORD || "";
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
 
 const MIME = { ".html":"text/html; charset=utf-8", ".js":"text/javascript; charset=utf-8", ".css":"text/css; charset=utf-8",
   ".json":"application/json; charset=utf-8", ".svg":"image/svg+xml", ".ico":"image/x-icon", ".png":"image/png" };
@@ -41,9 +42,52 @@ function recordUsage(section,model,inp,out){
 }
 loadUsage();
 
+let TG_USERNAME="";
+if(TELEGRAM_BOT_TOKEN){ tgApi("getMe").then(j=>{ if(j&&j.ok) TG_USERNAME=j.result.username; }).catch(()=>{}); }
+
 /* ---------- helpers ---------- */
 function sendJson(res,code,obj){ res.writeHead(code,{ "content-type":MIME[".json"] }); res.end(JSON.stringify(obj)); }
-function readBody(req){ return new Promise((resolve)=>{ let b=""; req.on("data",c=>{ b+=c; if(b.length>2e6) req.destroy(); }); req.on("end",()=>resolve(b)); }); }
+function readBody(req){ return new Promise((resolve)=>{ let b=""; req.on("data",c=>{ b+=c; if(b.length>12e6) req.destroy(); }); req.on("end",()=>resolve(b)); }); }
+
+/* ---------- Telegram ---------- */
+async function tgApi(method,payload){
+  const r=await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/${method}`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload||{})});
+  return r.json();
+}
+async function handleTgLink(req,res){
+  if(!TELEGRAM_BOT_TOKEN) return sendJson(res,500,{ok:false,error:"TELEGRAM_BOT_TOKEN не задан на сервере"});
+  const j=await tgApi("getUpdates",{limit:30,timeout:0});
+  if(!j.ok) return sendJson(res,502,{ok:false,error:j.description||"getUpdates error"});
+  let chat=null;
+  (j.result||[]).forEach(u=>{const m=u.message||u.edited_message||u.channel_post; if(m&&m.chat&&(m.chat.type==="private"||m.chat.type==="group"||m.chat.type==="supergroup")){chat={chat_id:m.chat.id,name:[m.chat.first_name,m.chat.last_name].filter(Boolean).join(" ")||m.chat.title||m.chat.username||("id"+m.chat.id)};}});
+  if(!chat) return sendJson(res,200,{ok:false,error:"Пока не вижу сообщений боту. Напишите боту /start и нажмите «Проверить связь» ещё раз."});
+  return sendJson(res,200,{ok:true,chat});
+}
+async function handleTgSend(req,res){
+  if(!TELEGRAM_BOT_TOKEN) return sendJson(res,500,{ok:false,error:"TELEGRAM_BOT_TOKEN не задан"});
+  const b=await readBody(req); let d={}; try{d=JSON.parse(b||"{}");}catch(e){}
+  if(!d.chat_id) return sendJson(res,400,{ok:false,error:"нет chat_id"});
+  const j=await tgApi("sendMessage",{chat_id:d.chat_id,text:(d.text||"").slice(0,4000),parse_mode:"HTML"});
+  return sendJson(res,j.ok?200:502,{ok:!!j.ok,error:j.description});
+}
+
+/* ---------- транскрипция аудио (Whisper) ---------- */
+async function handleTranscribe(req,res){
+  if(!OPENAI_API_KEY) return sendJson(res,500,{ok:false,error:"OPENAI_API_KEY не задан на сервере"});
+  const b=await readBody(req); let d={}; try{d=JSON.parse(b||"{}");}catch(e){return sendJson(res,400,{ok:false,error:"bad json"});}
+  if(!d.audio_base64) return sendJson(res,400,{ok:false,error:"нет аудио"});
+  try{
+    const buf=Buffer.from(d.audio_base64,"base64");
+    const fd=new FormData();
+    fd.append("file",new Blob([buf],{type:d.mime||"audio/webm"}),"audio.webm");
+    fd.append("model","whisper-1");
+    if(d.lang) fd.append("language",d.lang);
+    const r=await fetch("https://api.openai.com/v1/audio/transcriptions",{method:"POST",headers:{authorization:"Bearer "+OPENAI_API_KEY},body:fd});
+    const j=await r.json();
+    if(!r.ok) return sendJson(res,502,{ok:false,error:(j.error&&j.error.message)||"whisper error"});
+    return sendJson(res,200,{ok:true,text:j.text||""});
+  }catch(e){return sendJson(res,502,{ok:false,error:String(e.message||e)});}
+}
 function authed(req){ if(!SITE_PASSWORD) return true; return (req.headers["x-site-pass"]||"")===SITE_PASSWORD; }
 function htmlToText(html){ if(!html) return ""; return html
   .replace(/<script[\s\S]*?<\/script>/gi," ").replace(/<style[\s\S]*?<\/style>/gi," ").replace(/<noscript[\s\S]*?<\/noscript>/gi," ")
@@ -137,7 +181,7 @@ http.createServer(async (req,res)=>{
   const p=(req.url||"/").split("?")[0];
 
   if(p==="/api/health"){ return sendJson(res,200,{ ok:true, parser_key:!!PARSER_API_KEY, needs_auth:!!SITE_PASSWORD,
-    twogis_own:!!TWOGIS_API_KEY, keys:{ openai:!!OPENAI_API_KEY, anthropic:!!ANTHROPIC_API_KEY } }); }
+    twogis_own:!!TWOGIS_API_KEY, telegram:!!TELEGRAM_BOT_TOKEN, telegram_bot:TG_USERNAME, keys:{ openai:!!OPENAI_API_KEY, anthropic:!!ANTHROPIC_API_KEY } }); }
 
   if(req.method==="POST" && p==="/api/login"){
     const b=await readBody(req); let d={}; try{ d=JSON.parse(b||"{}"); }catch(e){}
@@ -145,11 +189,15 @@ http.createServer(async (req,res)=>{
   }
 
   // защищённые эндпоинты
-  if(p==="/api/parse"||p==="/api/llm"||p==="/api/usage"){
+  if(p.startsWith("/api/")){
     if(!authed(req)) return sendJson(res,401,{ ok:false, error:"Требуется вход" });
     if(req.method==="POST" && p==="/api/parse") return handleParse(req,res);
     if(req.method==="POST" && p==="/api/llm") return handleLLM(req,res);
     if(p==="/api/usage") return sendJson(res,200,{ ok:true, usage });
+    if(req.method==="POST" && p==="/api/telegram/link") return handleTgLink(req,res);
+    if(req.method==="POST" && p==="/api/telegram/send") return handleTgSend(req,res);
+    if(req.method==="POST" && p==="/api/transcribe") return handleTranscribe(req,res);
+    return sendJson(res,404,{ ok:false, error:"unknown endpoint" });
   }
 
   // статика
