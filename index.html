@@ -110,6 +110,51 @@
   details.extra[open] .chev{transform:rotate(90deg)}
   .keyrow{display:flex;gap:8px;align-items:center}
   .keyrow input{flex:1}
+  /* источники */
+  .src-add{display:flex;gap:8px;margin-bottom:8px}
+  .src-add select{width:118px;flex:none}
+  .src-add input{flex:1}
+  .src-err{color:var(--error);font-size:12px;min-height:16px;margin-bottom:8px}
+  .src-list{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+  .chip{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);
+    border-radius:var(--r-lg);background:var(--surface);box-shadow:var(--sh-1)}
+  .chip .ic{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font-size:14px;flex:none;
+    background:var(--brand-tint);color:var(--brand)}
+  .chip .meta{flex:1;min-width:0}
+  .chip .meta .t{font-weight:500;color:var(--text-strong);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chip .meta .s{font-size:11px;color:var(--quiet);text-transform:uppercase;letter-spacing:.03em}
+  .chip .ok{color:var(--success);font-size:16px}
+  .chip .rm{border:none;background:transparent;color:var(--quiet);cursor:pointer;font-size:18px;line-height:1;padding:2px 4px}
+  .chip .rm:hover{color:var(--error)}
+  .chip .st{font-size:11px;font-weight:500;padding:2px 8px;border-radius:9999px}
+  .chip .st.wait{background:var(--fill-subtle);color:var(--muted)}
+  .chip .st.run{background:var(--brand-tint);color:var(--brand)}
+  .chip .st.done{background:var(--success-tint);color:var(--success)}
+  .chip .st.fail{background:var(--error-tint);color:var(--error)}
+  .statusbar{padding:12px 14px;border-radius:var(--r-lg);font-weight:500;text-align:center;
+    background:var(--brand-tint-soft);color:var(--brand);border:1px solid var(--brand-tint);margin-bottom:14px}
+  /* этапы парсинга */
+  .steps{display:flex;flex-direction:column;gap:2px;margin:8px 0 16px}
+  .step{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--r-md);font-size:13px;color:var(--quiet)}
+  .step .dot{width:20px;height:20px;border-radius:9999px;display:grid;place-items:center;font-size:11px;flex:none;
+    background:var(--fill-subtle);color:var(--quiet);border:1px solid var(--border)}
+  .step.active{color:var(--text-strong);background:var(--brand-tint-soft)}
+  .step.active .dot{background:var(--brand);color:#fff;border-color:var(--brand);animation:pulse 1s infinite}
+  .step.done{color:var(--text)}
+  .step.done .dot{background:var(--success);color:#fff;border-color:var(--success)}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 var(--brand-tint)}50%{box-shadow:0 0 0 5px var(--brand-tint)}}
+  .prog{height:6px;border-radius:9999px;background:var(--fill-subtle);overflow:hidden;margin-bottom:16px}
+  .prog>i{display:block;height:100%;width:0;background:var(--brand);transition:width .4s ease}
+  /* блоки результата */
+  .block{border:1px solid var(--border);border-radius:var(--r-lg);margin-bottom:12px;overflow:hidden;box-shadow:var(--sh-1)}
+  .block>.bh{display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--surface-subtle);border-bottom:1px solid var(--border)}
+  .block>.bh .ic{font-size:15px}
+  .block>.bh .t{font-weight:500;color:var(--text-strong);flex:1}
+  .block>.bh label{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;user-select:none}
+  .block>.bh input[type=checkbox]{width:16px;height:16px;accent-color:var(--success);cursor:pointer}
+  .block textarea{border:none;border-radius:0;min-height:52px;padding:10px 12px}
+  .block textarea:focus{box-shadow:none}
+  .result-head{display:flex;align-items:center;gap:8px;margin:4px 0 14px}
   ::-webkit-scrollbar{width:10px;height:10px}
   ::-webkit-scrollbar-thumb{background:#dfe6ee;border-radius:9999px;border:2px solid var(--bg)}
 </style>
@@ -131,13 +176,43 @@
       <div class="cardhead">
         <h2>Анкета клиента</h2>
         <div class="tabs">
-          <button class="tab active" data-tab="form">Онбординг</button>
+          <button class="tab active" data-tab="sources">Источники</button>
+          <button class="tab" data-tab="form">Онбординг</button>
           <button class="tab" data-tab="prompt">Промпт</button>
         </div>
       </div>
 
+      <!-- ИСТОЧНИКИ -->
+      <div class="pane active" id="pane-sources">
+        <div class="card-scroll">
+          <p class="section-t">Шаг 1 — источники клиента</p>
+          <div class="hint" style="margin-top:-6px;margin-bottom:14px">Добавьте сайт, 2ГИС и/или Instagram клиента. Чем больше источников — тем точнее агент. Протокол (http://, https://, www.) можно не писать — уберём автоматически.</div>
+
+          <div class="src-add">
+            <select id="srcType" title="Тип источника">
+              <option value="auto">Авто</option>
+              <option value="website">Сайт</option>
+              <option value="2gis">2ГИС</option>
+              <option value="instagram">Instagram</option>
+            </select>
+            <input type="text" id="srcInput" placeholder="klinika-avrora.kz  ·  2gis.kz/...  ·  instagram.com/..." />
+            <button class="btn btn-primary" id="srcAdd">Добавить</button>
+          </div>
+          <div class="src-err" id="srcErr"></div>
+
+          <div class="src-list" id="srcList"></div>
+          <div class="statusbar" id="statusbar" style="display:none"></div>
+
+          <div id="parseArea"></div>
+        </div>
+        <div class="toolbar">
+          <button class="btn btn-primary" id="parseBtn" disabled>⚡ Запустить парсинг</button>
+          <button class="btn btn-ghost" id="skipSrc">Заполнить вручную →</button>
+        </div>
+      </div>
+
       <!-- ФОРМА -->
-      <div class="pane active" id="pane-form">
+      <div class="pane" id="pane-form">
         <div class="card-scroll">
           <div class="field">
             <label class="lbl"><span class="q">1.</span>Чем занимается ваша компания?</label>
@@ -641,6 +716,246 @@ function pushToolResults(res){
 async function safeErr(r){
   try{const j=await r.json();return (j.error&&(j.error.message||j.error))||JSON.stringify(j);}
   catch(e){return "HTTP "+r.status+" "+r.statusText;}
+}
+
+/* ========== ШАГ 1: ИСТОЧНИКИ ========== */
+const SRC_META={
+  website:{icon:"🌐",label:"Сайт"},
+  "2gis":{icon:"📍",label:"2ГИС"},
+  instagram:{icon:"📸",label:"Instagram"}
+};
+let sources=[]; let parsedResults=[];
+const srcType=document.getElementById("srcType");
+const srcInput=document.getElementById("srcInput");
+const srcErr=document.getElementById("srcErr");
+const srcList=document.getElementById("srcList");
+const statusbar=document.getElementById("statusbar");
+const parseBtn=document.getElementById("parseBtn");
+const parseArea=document.getElementById("parseArea");
+
+function detectType(clean){
+  if(/2gis/i.test(clean)) return "2gis";
+  if(/instagram\.com/i.test(clean)||clean.startsWith("@")) return "instagram";
+  return "website";
+}
+function normalize(raw,type){
+  let s=(raw||"").trim();
+  if(!s) return {error:"Введите ссылку"};
+  if(s.startsWith("@")){
+    const h=s.slice(1).replace(/[^a-z0-9._]/gi,"");
+    if(!h) return {error:"Некорректный ник Instagram"};
+    return {clean:"instagram.com/"+h, full:"https://instagram.com/"+h, type:"instagram"};
+  }
+  s=s.replace(/^https?:\/\//i,"").replace(/^www\./i,"").replace(/\s+/g,"").replace(/\/+$/,"");
+  const host=s.split("/")[0];
+  if(!/^[a-z0-9а-я.-]+\.[a-zа-я]{2,}$/i.test(host))
+    return {error:"Похоже, это не ссылка. Пример: site.kz, 2gis.kz/... или instagram.com/name"};
+  const t = (type&&type!=="auto")? type : detectType(s);
+  return {clean:s, full:"https://"+s, type:t};
+}
+function renderSources(){
+  srcList.innerHTML="";
+  sources.forEach(src=>{
+    const m=SRC_META[src.type];
+    const d=document.createElement("div"); d.className="chip"; d.dataset.id=src.id;
+    d.innerHTML=`<div class="ic">${m.icon}</div>
+      <div class="meta"><div class="t">${escapeHtml(src.clean)}</div><div class="s">${m.label}</div></div>
+      <span class="st wait" data-st>готов</span>
+      <span class="ok">✓</span>
+      <button class="rm" title="Удалить">×</button>`;
+    d.querySelector(".rm").onclick=()=>{sources=sources.filter(x=>x.id!==src.id);renderSources();updateStatus();};
+    srcList.appendChild(d);
+  });
+}
+function updateStatus(){
+  const n=sources.length;
+  parseBtn.disabled = n===0;
+  if(n===0){statusbar.style.display="none";return;}
+  const msgs={
+    1:"Одна ссылка — окей 👍 Запускать можно, но с 2–3 источниками агент будет точнее.",
+    2:"Две ссылки — хорошо 🙌 Уже добротная база для анализа.",
+    3:"Три источника — отлично, супер! 🚀 Максимум контекста для агента."
+  };
+  statusbar.style.display="block";
+  statusbar.textContent = msgs[n] || "Источников больше некуда — топ! 🔥";
+}
+function addSource(){
+  const res=normalize(srcInput.value, srcType.value);
+  if(res.error){srcErr.textContent=res.error;return;}
+  if(sources.some(s=>s.clean===res.clean)){srcErr.textContent="Эта ссылка уже добавлена";return;}
+  srcErr.textContent="";
+  sources.push({id:Date.now()+"-"+Math.random().toString(36).slice(2,6),type:res.type,clean:res.clean,full:res.full});
+  srcInput.value=""; srcType.value="auto";
+  renderSources(); updateStatus();
+}
+document.getElementById("srcAdd").onclick=addSource;
+srcInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();addSource();}});
+srcInput.addEventListener("input",()=>{srcErr.textContent="";});
+document.getElementById("skipSrc").onclick=()=>document.querySelector('.tab[data-tab="form"]').click();
+
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const STEP_LABELS=["🔎 Проверяю источники","🌐 Открываю страницы клиента","📥 Забираю данные","🧹 Чищу от лишнего","🧠 Анализирую через ИИ","🗂️ Раскладываю по блокам","✅ Готово"];
+function renderSteps(){
+  let html='<div class="prog"><i id="progBar"></i></div><div class="steps">';
+  STEP_LABELS.forEach((l,i)=>html+=`<div class="step" id="step-${i}"><span class="dot">${i+1}</span><span>${l}</span></div>`);
+  parseArea.innerHTML=html+'</div>';
+}
+function setStep(i,state){
+  const el=document.getElementById("step-"+i); if(!el) return;
+  el.className="step "+state;
+  if(state==="done") el.querySelector(".dot").textContent="✓";
+  const bar=document.getElementById("progBar");
+  if(bar) bar.style.width=Math.round(((i+(state==="done"?1:0.5))/STEP_LABELS.length)*100)+"%";
+}
+function chipStatus(id,cls,txt){
+  const el=srcList.querySelector(`.chip[data-id="${id}"] [data-st]`);
+  if(el){el.className="st "+cls;el.textContent=txt;}
+}
+parseBtn.onclick=runParsing;
+
+async function runParsing(){
+  const key=apiKeyEl.value.trim();
+  parseBtn.disabled=true; document.getElementById("skipSrc").disabled=true;
+  renderSteps(); parsedResults=[];
+  setStep(0,"active"); await sleep(500); setStep(0,"done");
+
+  setStep(1,"active");
+  for(const src of sources){
+    chipStatus(src.id,"run","парсинг…");
+    try{
+      const r=await fetch("/api/parse",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({type:src.type,url:src.full})});
+      const j=await r.json();
+      if(j.ok){parsedResults.push({type:src.type,clean:src.clean,data:j.data});chipStatus(src.id,"done","готово");}
+      else{parsedResults.push({type:src.type,clean:src.clean,error:j.error});chipStatus(src.id,"fail","ошибка");}
+    }catch(e){parsedResults.push({type:src.type,clean:src.clean,error:e.message});chipStatus(src.id,"fail","ошибка");}
+  }
+  setStep(1,"done");
+  setStep(2,"active"); await sleep(500); setStep(2,"done");
+  setStep(3,"active"); await sleep(500);
+  const context=buildParseContext(parsedResults);
+  setStep(3,"done");
+
+  setStep(4,"active");
+  if(!key){
+    parseArea.insertAdjacentHTML("beforeend",`<div class="statusbar" style="background:var(--warning-tint);color:#a4670f;border-color:#FFE0B8">Данные собраны, но для разбора по блокам нужен API-ключ (вставьте справа). Ниже — сырой результат.</div><pre style="white-space:pre-wrap;font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px">${escapeHtml(context)}</pre>`);
+    return finishManual();
+  }
+  let blocks;
+  try{blocks=await extractBlocks(context,key);}
+  catch(e){
+    parseArea.insertAdjacentHTML("beforeend",`<div class="statusbar" style="background:var(--error-tint);color:var(--error);border-color:#F7C5C5">Ошибка анализа: ${escapeHtml(e.message||String(e))}</div><pre style="white-space:pre-wrap;font-size:12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px">${escapeHtml(context)}</pre>`);
+    return finishManual();
+  }
+  setStep(4,"done");
+  setStep(5,"active"); await sleep(400); setStep(5,"done");
+  setStep(6,"done");
+  renderBlocks(blocks);
+}
+function finishManual(){parseBtn.disabled=false;document.getElementById("skipSrc").disabled=false;}
+
+function buildParseContext(results){
+  const out=[];
+  results.forEach(r=>{
+    const m=SRC_META[r.type];
+    out.push(`### ${m.label}: ${r.clean}`);
+    if(r.error){out.push("(ошибка: "+r.error+")");out.push("");return;}
+    const d=r.data||{};
+    if(r.type==="2gis"){
+      out.push(kv("Название",d.company_name),kv("Категория",d.company_category),kv("Адрес",d.company_address),
+        kv("Филиалов",d.branches_count),kv("Часы работы",d.working_hours),kv("Телефон",d.phone_number));
+    }else if(r.type==="instagram"){
+      out.push(kv("Профиль",d.ig_display_name||d.ig_username),kv("Ник",d.ig_username),kv("Описание",d.ig_bio),
+        kv("Ссылка в bio",d.ig_bio_link),kv("Подписчиков",d.ig_followers_count));
+      if(Array.isArray(d.ig_recent_captions)&&d.ig_recent_captions.length)
+        out.push("Последние посты:\n"+d.ig_recent_captions.slice(0,8).map(c=>"— "+c).join("\n"));
+    }else{
+      out.push(d.text||d.raw||"(пусто)");
+    }
+    out.push("");
+  });
+  return out.filter(x=>x!=="").join("\n");
+}
+function kv(k,v){return (v!==null&&v!==undefined&&v!=="")?`${k}: ${v}`:"";}
+
+const EXTRACT_SYS=`Ты извлекаешь из сырых данных о бизнесе структурированную информацию для настройки ИИ-агента продаж/поддержки.
+Верни СТРОГО валидный JSON без markdown и пояснений, ровно по схеме:
+{"company_name":"","about":"","address":"","working_hours":"","phone":"","prices":"","services":"","socials":"","extra":""}
+Правила:
+- Значения — строки на русском, кратко и по сути, только факты из данных. Ничего не выдумывай.
+- about: чем занимается компания (2–4 предложения).
+- services: услуги/продукты.
+- prices: цены/тарифы с валютой, если есть.
+- socials: сайт, соцсети, мессенджеры.
+- extra: важное вне других полей (акции, УТП, гарантии).
+- Если данных для поля нет — пустая строка "".`;
+
+async function extractBlocks(context,key){
+  const text=await callLLMOnce(EXTRACT_SYS,"Данные о бизнесе:\n\n"+context,key);
+  const m=text.match(/\{[\s\S]*\}/);
+  if(!m) throw new Error("Модель не вернула JSON");
+  return JSON.parse(m[0]);
+}
+async function callLLMOnce(sys,user,key){
+  if(provider==="anthropic"){
+    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",
+      headers:{"content-type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+      body:JSON.stringify({model:modelSel.value,max_tokens:1500,system:sys,messages:[{role:"user",content:user}]})});
+    if(!r.ok) throw new Error(await safeErr(r));
+    const d=await r.json();
+    return (d.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
+  }else{
+    const r=await fetch("https://api.openai.com/v1/chat/completions",{method:"POST",
+      headers:{"content-type":"application/json","authorization":"Bearer "+key},
+      body:JSON.stringify({model:modelSel.value,max_tokens:1500,messages:[{role:"system",content:sys},{role:"user",content:user}]})});
+    if(!r.ok) throw new Error(await safeErr(r));
+    const d=await r.json();
+    return d.choices[0].message.content||"";
+  }
+}
+
+const BLOCK_DEFS=[
+  {key:"company_name",icon:"🏢",label:"Компания"},
+  {key:"about",icon:"📝",label:"О компании"},
+  {key:"address",icon:"📍",label:"Адрес / гео"},
+  {key:"working_hours",icon:"🕒",label:"График работы"},
+  {key:"phone",icon:"📞",label:"Контакты"},
+  {key:"services",icon:"🧾",label:"Услуги"},
+  {key:"prices",icon:"💰",label:"Цены"},
+  {key:"socials",icon:"🔗",label:"Соцсети / ссылки"},
+  {key:"extra",icon:"⭐",label:"Важное / УТП"}
+];
+function renderBlocks(blocks){
+  finishManual();
+  let html=`<div class="result-head"><span class="pill ok">Готово ✓</span><span style="color:var(--muted);font-size:13px">Проверьте блоки, поправьте и перенесите в анкету.</span></div>`;
+  let any=false;
+  BLOCK_DEFS.forEach(b=>{
+    const v=(blocks[b.key]||"").toString().trim();
+    if(!v) return; any=true;
+    html+=`<div class="block" data-key="${b.key}">
+      <div class="bh"><span class="ic">${b.icon}</span><span class="t">${b.label}</span>
+        <label><input type="checkbox" checked> верно</label></div>
+      <textarea>${escapeHtml(v)}</textarea></div>`;
+  });
+  if(!any) html+=`<div class="statusbar" style="background:var(--warning-tint);color:#a4670f;border-color:#FFE0B8">Модель не нашла полезных данных. Попробуйте другой источник или заполните анкету вручную.</div>`;
+  html+=`<button class="btn btn-primary" id="toFormBtn" style="width:100%;height:44px;margin-top:6px">Перенести в анкету →</button>`;
+  parseArea.innerHTML=html;
+  document.getElementById("toFormBtn").onclick=transferToForm;
+}
+function transferToForm(){
+  const get=k=>{const el=parseArea.querySelector(`.block[data-key="${k}"] textarea`);return el?el.value.trim():"";};
+  const chk=k=>{const el=parseArea.querySelector(`.block[data-key="${k}"] input[type=checkbox]`);return el?el.checked:true;};
+  const val=k=>chk(k)?get(k):"";
+  const set=(id,v)=>{if(v){const el=document.getElementById(id);if(el) el.value=v;}};
+  set("companyName",val("company_name"));
+  set("geo",val("address"));
+  set("hours",val("working_hours"));
+  set("pricing",[val("prices"),val("services")?("Услуги: "+val("services")):""].filter(Boolean).join("\n"));
+  const about=[val("about"),
+    val("phone")?("Контакты: "+val("phone")):"",
+    val("socials")?("Ссылки: "+val("socials")):"",
+    val("extra")?("Важное: "+val("extra")):""].filter(Boolean).join("\n");
+  set("companyAbout",about);
+  document.querySelector('.tab[data-tab="form"]').click();
 }
 </script>
 </body>
