@@ -232,7 +232,10 @@
     <div class="logo">M</div>
     <div><b>MoonAI</b> <span class="sub">· создание AI-агента</span></div>
   </div>
-  <button class="gear" id="gearBtn" title="Настройки">⚙</button>
+  <div style="display:flex;gap:8px">
+    <button class="gear" id="usageBtn" title="Расход токенов">📊</button>
+    <button class="gear" id="gearBtn" title="Настройки">⚙</button>
+  </div>
 </div>
 
 <div class="progwrap" id="progwrap" style="display:none">
@@ -270,9 +273,8 @@
         <select id="modelSel"></select>
       </div>
       <div class="field">
-        <label class="lbl">API-ключ провайдера</label>
-        <div class="hint">Нужен для «магии» автозаполнения и тест-чата. Хранится только в вашем браузере (localStorage), отправляется напрямую в API провайдера.</div>
-        <input type="text" id="apiKey" placeholder="sk-ant-... / sk-..." autocomplete="off" spellcheck="false" style="font-family:ui-monospace,Menlo,monospace" />
+        <label class="lbl">API-ключи</label>
+        <div class="hint" id="keysStatus">🔒 Ключи хранятся на сервере и не передаются в браузер. Чтобы изменить — задайте переменные <code>OPENAI_API_KEY</code> / <code>ANTHROPIC_API_KEY</code> на Railway.</div>
       </div>
       <div class="field">
         <label class="lbl">Статус парсера источников</label>
@@ -283,10 +285,33 @@
   </div>
 </div>
 
+<!-- Расход токенов -->
+<div class="overlay" id="usageOverlay">
+  <div class="modal wide">
+    <div class="modal-head"><h3>📊 Расход токенов</h3><button class="gear" id="usageClose">✕</button></div>
+    <div class="modal-body" id="usageBody">Загрузка…</div>
+    <div class="modal-foot"><button class="btn btn-ghost" id="usageRefresh">Обновить</button></div>
+  </div>
+</div>
+
+<!-- Вход -->
+<div class="overlay" id="loginOverlay" style="background:#0b1020">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-body" style="text-align:center;padding:36px 28px">
+      <div class="logo" style="width:44px;height:44px;font-size:20px;margin:0 auto 16px">M</div>
+      <h3 style="margin-bottom:8px">Вход в конструктор</h3>
+      <p style="color:var(--muted);font-size:13px;margin:0 0 20px">Введите пароль доступа</p>
+      <input type="password" id="loginPass" placeholder="Пароль" style="width:100%;height:42px;text-align:center;margin-bottom:6px">
+      <div class="src-err" id="loginErr" style="text-align:center"></div>
+      <button class="btn btn-primary btn-lg" id="loginBtn" style="width:100%;margin-top:8px">Войти</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ================= МОДЕЛИ ================= */
 const MODELS={
-  anthropic:[{id:"claude-sonnet-4-5-20250929",name:"Claude Sonnet 4.5"},{id:"claude-opus-4-1-20250805",name:"Claude Opus 4.1"},{id:"claude-3-5-haiku-20241022",name:"Claude Haiku 3.5"}],
+  anthropic:[{id:"claude-sonnet-5",name:"Claude Sonnet 5"},{id:"claude-opus-5",name:"Claude Opus 5"},{id:"claude-haiku-4-5-20251001",name:"Claude Haiku 4.5"}],
   openai:[{id:"gpt-4o",name:"GPT-4o"},{id:"gpt-4o-mini",name:"GPT-4o mini"},{id:"gpt-4.1",name:"GPT-4.1"}]
 };
 let provider=localStorage.getItem("oa_prov")||"anthropic";
@@ -421,7 +446,7 @@ function renderWelcome(el){
       <div class="metric"><b>0</b><span>кода и сложностей</span></div>
     </div>
     <button class="btn btn-primary btn-lg" id="goBtn">Поехали 🚀</button>
-    <p style="margin-top:14px;font-size:12px">Совет: добавьте API-ключ в ⚙ настройках — тогда мы автоматически заполним половину полей за вас.</p>`;
+    <p style="margin-top:14px;font-size:12px">Мы автоматически заполним половину полей за вас из ваших источников ✨</p>`;
   el.querySelector("#goBtn").onclick=()=>go(1);
 }
 
@@ -494,7 +519,7 @@ async function runParsing(){
   const results=[]; let okCount=0;
   for(const src of state.sources){
     chipStatus(src.id,"run","собираю…");
-    try{const r=await fetch("/api/parse",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({type:src.type,url:src.full})});
+    try{const r=await fetch("/api/parse",{method:"POST",headers:apiHeaders(),body:JSON.stringify({type:src.type,url:src.full})});
       const j=await r.json();
       if(j.ok){results.push({type:src.type,clean:src.clean,data:j.data});chipStatus(src.id,"done","готово ✓");okCount++;}
       else{results.push({type:src.type,clean:src.clean,skip:true});chipStatus(src.id,"skip","пропущено");}
@@ -510,17 +535,17 @@ async function runParsing(){
   else note='<div class="statusbar">Все источники собраны — отлично! 🚀</div>';
 
   setStep(4,"active");
-  const key=(document.getElementById("apiKey").value||"").trim();
+  const hasKey=health.keys && (provider==="anthropic"?health.keys.anthropic:health.keys.openai);
   let genOk=false;
-  if(key && (okCount>0 || state.parsedContext)){
-    try{ await generateSuggestions(state.parsedContext,key); genOk=true; }catch(e){ /* мягко: просто идём с шаблоном */ }
+  if(hasKey && (okCount>0 || state.parsedContext)){
+    try{ await generateSuggestions(state.parsedContext); genOk=true; }catch(e){ /* мягко: идём с шаблоном */ }
   }
   setStep(4,"done");setStep(5,"active");await sleep(300);setStep(5,"done");setStep(6,"done");
 
   state.generated=true;
   area.insertAdjacentHTML("beforeend",note);
-  if(!key) area.insertAdjacentHTML("beforeend",'<div class="hintbox">🔑 Добавьте API-ключ в ⚙ настройках — и мы автоматически предзаполним поля. Сейчас продолжим по шаблону.</div>');
-  else if(!genOk) area.insertAdjacentHTML("beforeend",'<div class="hintbox">✨ Авто-подсказки сейчас недоступны — продолжим по шаблону, всё можно заполнить вручную.</div>');
+  if(!hasKey) area.insertAdjacentHTML("beforeend",'<div class="hintbox">🔑 Ключ модели не задан на сервере — продолжим по шаблону. Всё можно заполнить вручную.</div>');
+  else if(!genOk) area.insertAdjacentHTML("beforeend",'<div class="hintbox">✨ Авто-подсказки сейчас недоступны — продолжим по шаблону.</div>');
   else area.insertAdjacentHTML("beforeend",'<div class="statusbar" style="background:var(--success-tint);color:#177a3d;border-color:#BFead0">✨ Готово! Мы предзаполнили поля — проверяйте на следующих шагах.</div>');
 
   if(nb){nb.disabled=false;nb.textContent="Далее →";nb.onclick=next;}
@@ -555,8 +580,8 @@ const GEN_SYS=`Ты помогаешь настроить ИИ-агента пр
 - data_fields: 4-6 полей, которые агенту стоит собрать у клиента.
 - languages: вероятные языки общения. stop_topics: темы, которых агент избегает.
 Только JSON, на русском.`;
-async function generateSuggestions(context,key){
-  const txt=await callLLMOnce(GEN_SYS,"Данные о бизнесе:\n\n"+(context||"(данных мало, опирайся на общую логику)"),key,3000);
+async function generateSuggestions(context){
+  const txt=await callLLMOnce(GEN_SYS,"Данные о бизнесе:\n\n"+(context||"(данных мало, опирайся на общую логику)"),"suggestions",3000);
   const m=txt.match(/\{[\s\S]*\}/); if(!m)throw new Error("no json");
   const g=JSON.parse(m[0]);
   const S=state.suggestions;
@@ -583,15 +608,14 @@ async function generateSuggestions(context,key){
   if(!D.langs)D.langs=S.languages;
   if(!D.stoptopics)D.stoptopics=S.stop_topics;
 }
-async function callLLMOnce(sys,user,key,maxTok){
+async function callLLMOnce(sys,user,section,maxTok){
   maxTok=maxTok||1500;
-  if(provider==="anthropic"){
-    const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"content-type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:document.getElementById("modelSel").value,max_tokens:maxTok,system:sys,messages:[{role:"user",content:user}]})});
-    if(!r.ok)throw new Error(await safeErr(r));const d=await r.json();return (d.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("");
-  }else{
-    const r=await fetch("https://api.openai.com/v1/chat/completions",{method:"POST",headers:{"content-type":"application/json","authorization":"Bearer "+key},body:JSON.stringify({model:document.getElementById("modelSel").value,max_tokens:maxTok,messages:[{role:"system",content:sys},{role:"user",content:user}]})});
-    if(!r.ok)throw new Error(await safeErr(r));const d=await r.json();return d.choices[0].message.content||"";
-  }
+  const body = provider==="anthropic"
+    ? {model:modelSel.value,max_tokens:maxTok,system:sys,messages:[{role:"user",content:user}]}
+    : {model:modelSel.value,max_tokens:maxTok,messages:[{role:"system",content:sys},{role:"user",content:user}]};
+  const r=await fetch("/api/llm",{method:"POST",headers:apiHeaders({"x-provider":provider,"x-section":section||"other"}),body:JSON.stringify(body)});
+  if(!r.ok)throw new Error(await safeErr(r));const d=await r.json();
+  return provider==="anthropic" ? (d.content||[]).filter(b=>b.type==="text").map(b=>b.text).join("") : (d.choices[0].message.content||"");
 }
 async function safeErr(r){try{const j=await r.json();return (j.error&&(j.error.message||j.error))||JSON.stringify(j);}catch(e){return "HTTP "+r.status;}}
 
@@ -699,13 +723,12 @@ function renderFaq(el){
   const addF=()=>{const v=addI.value.trim();if(!v)return;D.faq.push({q:v,a:""});addI.value="";draw();updateAgent();};
   el.querySelector("#faqAddBtn").onclick=addF;addI.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();addF();}});
   el.querySelector("#faqGen").onclick=async(ev)=>{
-    const key=getKey(); if(!key){toast("Добавьте API-ключ в ⚙ настройках");openSettings();return;}
     const btn=ev.target;btn.disabled=true;btn.textContent="✨ Генерирую...";
     try{
       const qs=D.faq.map(f=>f.q).filter(Boolean);
       const ctx=`Компания: ${D.companyName}. О компании: ${D.about}. Цены: ${D.pricing}. Данные источников:\n${state.parsedContext}`.slice(0,6000);
       const sys=`Ответь на вопросы клиентов кратко и по делу от лица компании. Верни СТРОГО JSON-массив вида [{"q":"","a":""}] на русском. Используй факты из данных, не выдумывай цены, если их нет — пиши «уточните у менеджера».`;
-      const txt=await callLLMOnce(sys,"Данные:\n"+ctx+"\n\nВопросы:\n"+qs.map(q=>"- "+q).join("\n"),key,2000);
+      const txt=await callLLMOnce(sys,"Данные:\n"+ctx+"\n\nВопросы:\n"+qs.map(q=>"- "+q).join("\n"),"faq_answers",2000);
       const m=txt.match(/\[[\s\S]*\]/);if(m){const arr=JSON.parse(m[0]);arr.forEach(a=>{const f=D.faq.find(x=>x.q===a.q);if(f)f.a=a.a;else if(a.q)D.faq.push({q:a.q,a:a.a||""});});draw();updateAgent();toast("Ответы сгенерированы ✨");}
     }catch(e){toast("Не вышло сгенерировать — впишите ответы вручную");}
     btn.disabled=false;btn.textContent="✨ Сгенерировать ответы";
@@ -843,14 +866,13 @@ function renderChat(el,sys){
     d.innerHTML=`<div class="fn-t">${label} <code>${name}()</code></div><pre>${esc(JSON.stringify(input,null,2))}</pre><div style="margin-top:6px;color:var(--success);font-weight:600">✓ выполнено (демо)</div>`;box.appendChild(d);box.scrollTop=box.scrollHeight;};
   const addSys=t=>{const d=document.createElement("div");d.className="msg sys";d.textContent=t;box.appendChild(d);box.scrollTop=box.scrollHeight;};
   async function send(){
-    const text=inp.value.trim();if(!text)return;const key=getKey();
-    if(!key){addSys("Добавьте API-ключ в ⚙ настройках, чтобы протестировать агента.");openSettings();return;}
+    const text=inp.value.trim();if(!text)return;
     add("user",text);chatHistory.push({role:"user",content:[{type:"text",text}]});inp.value="";inp.style.height="auto";
     const t=document.createElement("div");t.className="typing";t.textContent="агент печатает…";box.appendChild(t);box.scrollTop=box.scrollHeight;
     try{
       let typing=t;
       for(let step=0;step<5;step++){
-        const res=provider==="anthropic"?await chatAnthropic(sys,key):await chatOpenAI(sys,key);
+        const res=provider==="anthropic"?await chatAnthropic(sys):await chatOpenAI(sys);
         typing.remove();
         if(res.text)add("bot",res.text);
         if(res.toolCalls&&res.toolCalls.length){res.toolCalls.forEach(tc=>addFn(tc.name,tc.input));pushToolResults(res);
@@ -863,20 +885,20 @@ function renderChat(el,sys){
   inp.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}});
   inp.addEventListener("input",()=>{inp.style.height="auto";inp.style.height=Math.min(inp.scrollHeight,120)+"px";});
 }
-async function chatAnthropic(sys,key){
+async function chatAnthropic(sys){
   const tools=TOOLS.map(t=>({name:t.name,description:t.description,input_schema:t.input}));
   const messages=chatHistory.map(m=>({role:m.role,content:m.content.map(aBlock)}));
-  const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"content-type":"application/json","x-api-key":key,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},body:JSON.stringify({model:document.getElementById("modelSel").value,max_tokens:1024,system:sys,tools,messages})});
+  const r=await fetch("/api/llm",{method:"POST",headers:apiHeaders({"x-provider":"anthropic","x-section":"chat"}),body:JSON.stringify({model:modelSel.value,max_tokens:1024,system:sys,tools,messages})});
   if(!r.ok)throw new Error(await safeErr(r));const d=await r.json();
   let text="";const toolCalls=[],blocks=[];
   (d.content||[]).forEach(b=>{if(b.type==="text"){text+=b.text;blocks.push({type:"text",text:b.text});}if(b.type==="tool_use"){toolCalls.push({id:b.id,name:b.name,input:b.input});blocks.push({type:"tool_use",id:b.id,name:b.name,input:b.input});}});
   chatHistory.push({role:"assistant",content:blocks});return{text:text.trim(),toolCalls};
 }
 function aBlock(b){if(b.type==="text")return{type:"text",text:b.text};if(b.type==="tool_use")return{type:"tool_use",id:b.id,name:b.name,input:b.input};if(b.type==="tool_result")return{type:"tool_result",tool_use_id:b.tool_use_id,content:b.content};return b;}
-async function chatOpenAI(sys,key){
+async function chatOpenAI(sys){
   const tools=TOOLS.map(t=>({type:"function",function:{name:t.name,description:t.description,parameters:t.input}}));
   const messages=[{role:"system",content:sys},...chatHistory.flatMap(oMsgs)];
-  const r=await fetch("https://api.openai.com/v1/chat/completions",{method:"POST",headers:{"content-type":"application/json","authorization":"Bearer "+key},body:JSON.stringify({model:document.getElementById("modelSel").value,max_tokens:1024,messages,tools})});
+  const r=await fetch("/api/llm",{method:"POST",headers:apiHeaders({"x-provider":"openai","x-section":"chat"}),body:JSON.stringify({model:modelSel.value,max_tokens:1024,messages,tools})});
   if(!r.ok)throw new Error(await safeErr(r));const d=await r.json();const msg=d.choices[0].message;
   const toolCalls=[],blocks=[];if(msg.content)blocks.push({type:"text",text:msg.content});
   (msg.tool_calls||[]).forEach(tc=>{let input={};try{input=JSON.parse(tc.function.arguments||"{}");}catch(e){}toolCalls.push({id:tc.id,name:tc.function.name,input});blocks.push({type:"tool_use",id:tc.id,name:tc.function.name,input});});
@@ -888,28 +910,93 @@ function oMsgs(m){if(m.role==="user"){const out=[];const txt=m.content.filter(b=
   const msg={role:"assistant",content:txt||null};if(calls.length)msg.tool_calls=calls;return[msg];}
 function pushToolResults(res){const results=res.toolCalls.map(tc=>{const p=tc.name==="save_lead"?{status:"ok",message:"Заявка создана (демо). ID: LEAD-"+Math.floor(Math.random()*9000+1000)}:{status:"ok",message:"Диалог передан оператору (демо)."};return{type:"tool_result",tool_use_id:tc.id,content:JSON.stringify(p)};});chatHistory.push({role:"user",content:results});}
 
-/* ================= НАСТРОЙКИ ================= */
-const modelSel=document.getElementById("modelSel"),apiKeyEl=document.getElementById("apiKey");
+/* ================= НАСТРОЙКИ / ДОСТУП ================= */
+const modelSel=document.getElementById("modelSel");
+let health={};
+function sitePass(){return localStorage.getItem("oa_pass")||"";}
+function apiHeaders(extra){return Object.assign({"content-type":"application/json","x-site-pass":sitePass()},extra||{});}
 function renderModels(){modelSel.innerHTML="";MODELS[provider].forEach(m=>{const o=document.createElement("option");o.value=m.id;o.textContent=m.name;modelSel.appendChild(o);});const s=localStorage.getItem("oa_model_"+provider);if(s)modelSel.value=s;}
-function setProvider(p){provider=p;localStorage.setItem("oa_prov",p);document.querySelectorAll("#provSeg button").forEach(b=>b.classList.toggle("active",b.dataset.prov===p));renderModels();apiKeyEl.value=localStorage.getItem("oa_key_"+p)||"";apiKeyEl.placeholder=p==="anthropic"?"sk-ant-...":"sk-...";}
+function setProvider(p){provider=p;localStorage.setItem("oa_prov",p);document.querySelectorAll("#provSeg button").forEach(b=>b.classList.toggle("active",b.dataset.prov===p));renderModels();}
 document.querySelectorAll("#provSeg button").forEach(b=>b.onclick=()=>setProvider(b.dataset.prov));
 modelSel.onchange=()=>localStorage.setItem("oa_model_"+provider,modelSel.value);
-apiKeyEl.oninput=()=>localStorage.setItem("oa_key_"+provider,apiKeyEl.value.trim());
-function getKey(){return (apiKeyEl.value||"").trim();}
 function openSettings(){document.getElementById("setOverlay").classList.add("show");}
 document.getElementById("gearBtn").onclick=openSettings;
 document.getElementById("setClose").onclick=()=>document.getElementById("setOverlay").classList.remove("show");
 document.getElementById("setSave").onclick=()=>{document.getElementById("setOverlay").classList.remove("show");toast("Настройки сохранены");};
 document.getElementById("setOverlay").onclick=e=>{if(e.target.id==="setOverlay")e.target.classList.remove("show");};
 setProvider(provider);
-fetch("/api/health").then(r=>r.json()).then(j=>{document.getElementById("parserStatus").textContent=j.parser_key?"✅ Парсер подключён и готов":"⚠️ Ключ парсера не задан на сервере";}).catch(()=>{document.getElementById("parserStatus").textContent="⚠️ Не удалось проверить парсер";});
+
+/* ---- usage дашборд ---- */
+const usageOverlay=document.getElementById("usageOverlay");
+document.getElementById("usageBtn").onclick=openUsage;
+document.getElementById("usageClose").onclick=()=>usageOverlay.classList.remove("show");
+document.getElementById("usageRefresh").onclick=loadUsage;
+usageOverlay.onclick=e=>{if(e.target.id==="usageOverlay")e.target.classList.remove("show");};
+function openUsage(){usageOverlay.classList.add("show");loadUsage();}
+const SECTION_LABELS={suggestions:"✨ Магия (автозаполнение)",faq_answers:"❓ FAQ-ответы",chat:"💬 Тест-чат",other:"Прочее"};
+const money=n=>"$"+(n||0).toFixed(4);
+const num=n=>(n||0).toLocaleString("ru-RU");
+async function loadUsage(){
+  const body=document.getElementById("usageBody");body.innerHTML="Загрузка…";
+  try{const r=await fetch("/api/usage",{headers:apiHeaders()});const j=await r.json();const u=j.usage||{};
+    const t=u.totals||{input:0,output:0,cost:0,requests:0};
+    const row=(label,o)=>`<tr><td style="padding:8px 10px">${label}</td><td style="padding:8px 10px;text-align:right">${num(o.input)}</td><td style="padding:8px 10px;text-align:right">${num(o.output)}</td><td style="padding:8px 10px;text-align:right">${num(o.requests)}</td><td style="padding:8px 10px;text-align:right;font-weight:600">${money(o.cost)}</td></tr>`;
+    const tbl=obj=>{const keys=Object.keys(obj||{});if(!keys.length)return'<div class="hint">пока пусто</div>';
+      return `<table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:var(--quiet);font-size:11px;text-transform:uppercase"><th style="text-align:left;padding:6px 10px">Раздел</th><th style="text-align:right;padding:6px 10px">Вход</th><th style="text-align:right;padding:6px 10px">Выход</th><th style="text-align:right;padding:6px 10px">Запросов</th><th style="text-align:right;padding:6px 10px">$</th></tr></thead><tbody>${keys.map(k=>row(SECTION_LABELS[k]||k,obj[k])).join("")}</tbody></table>`;};
+    body.innerHTML=`
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px">
+        <div class="metric" style="flex:1"><b>${money(t.cost)}</b><span>потрачено всего</span></div>
+        <div class="metric" style="flex:1"><b>${num(t.input+t.output)}</b><span>токенов всего</span></div>
+        <div class="metric" style="flex:1"><b>${num(t.requests)}</b><span>ИИ-запросов</span></div>
+        <div class="metric" style="flex:1"><b>${num(u.parseRequests)}</b><span>парсингов</span></div>
+      </div>
+      <div class="section-t" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--quiet);margin:0 0 8px">По разделам</div>
+      ${tbl(u.bySection)}
+      <div class="section-t" style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--quiet);margin:20px 0 8px">По моделям</div>
+      ${tbl(u.byModel)}
+      <div class="hint" style="margin-top:14px">Обновлено: ${u.updatedAt?new Date(u.updatedAt).toLocaleString("ru-RU"):"—"}. Стоимость — оценка по тарифам провайдеров.</div>`;
+  }catch(e){body.innerHTML='<div class="src-err">Не удалось загрузить: '+(e.message||e)+'</div>';}
+}
+
+/* ---- вход по паролю ---- */
+const loginOverlay=document.getElementById("loginOverlay");
+function showLogin(){loginOverlay.classList.add("show");setTimeout(()=>document.getElementById("loginPass").focus(),50);}
+async function doLogin(){
+  const pass=document.getElementById("loginPass").value;const err=document.getElementById("loginErr");
+  try{const r=await fetch("/api/login",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({password:pass})});
+    const j=await r.json();
+    if(j.ok){localStorage.setItem("oa_pass",pass);loginOverlay.classList.remove("show");initApp();}
+    else{err.textContent="Неверный пароль";}
+  }catch(e){err.textContent="Ошибка входа";}
+}
+document.getElementById("loginBtn").onclick=doLogin;
+document.getElementById("loginPass").addEventListener("keydown",e=>{if(e.key==="Enter")doLogin();});
+
+function initApp(){
+  document.getElementById("parserStatus").textContent=health.parser_key?"✅ Парсер подключён и готов":"⚠️ Ключ парсера не задан на сервере";
+  const ks=[];if(health.keys&&health.keys.anthropic)ks.push("Claude");if(health.keys&&health.keys.openai)ks.push("OpenAI");
+  document.getElementById("keysStatus").innerHTML="🔒 Ключи на сервере"+(ks.length?": <b>"+ks.join(", ")+"</b> подключены":" — не заданы")+". Изменить — через переменные окружения на Railway.";
+  render();
+}
+async function boot(){
+  try{health=await (await fetch("/api/health")).json();}catch(e){health={};}
+  if(health.needs_auth){
+    // пробуем сохранённый пароль
+    if(sitePass()){
+      try{const r=await fetch("/api/login",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({password:sitePass()})});
+        const j=await r.json();if(j.ok){initApp();return;}}catch(e){}
+    }
+    showLogin();
+  }else{ initApp(); }
+}
 
 /* ================= МАГИЯ-КНОПКА ================= */
 function magicBtn(id){return `<div style="margin-top:6px"><button class="btn btn-magic" id="${id}">✨ Заполнить магией из источников</button></div>`;}
 function wireMagic(el,id){const b=el.querySelector("#"+id);if(!b)return;b.onclick=async()=>{
-  const key=getKey();if(!key){toast("Добавьте API-ключ в ⚙ настройках");openSettings();return;}
+  const hasKey=health.keys && (provider==="anthropic"?health.keys.anthropic:health.keys.openai);
+  if(!hasKey){toast("Ключ модели не задан на сервере");return;}
   b.disabled=true;const o=b.textContent;b.textContent="✨ Магия...";
-  try{await generateSuggestions(state.parsedContext,key);
+  try{await generateSuggestions(state.parsedContext);
     // сбрасываем инициализаторы, чтобы шаги перечитали новые подсказки
     state.data._restrInit=state.data._faqInit=state.data._dataInit=false;
     render();toast("Готово ✨");}
@@ -924,7 +1011,7 @@ let toastT;function toast(msg){let t=document.getElementById("toast");if(!t){t=d
 function confetti(){const em=["🎉","✨","🎊","⭐","💜"];for(let i=0;i<28;i++){const c=document.createElement("div");c.className="confetti";c.textContent=em[i%em.length];c.style.left=Math.random()*100+"vw";c.style.animationDuration=(2+Math.random()*2)+"s";c.style.animationDelay=(Math.random()*.5)+"s";document.body.appendChild(c);setTimeout(()=>c.remove(),4500);}}
 
 /* ================= СТАРТ ================= */
-render();
+boot();
 </script>
 </body>
 </html>
