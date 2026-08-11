@@ -147,21 +147,24 @@
   .tg-box{border:1px solid var(--border);border-radius:var(--r-lg);padding:14px;margin-top:10px;background:var(--surface-subtle)}
   /* флоучарт этапов */
   .flow{position:relative}
-  .stage{position:relative;padding-left:46px;margin-bottom:12px}
-  .stage::before{content:"";position:absolute;left:15px;top:36px;bottom:-14px;width:2px;background:var(--border)}
-  .stage:last-child::before{display:none}
-  .stage .node{position:absolute;left:0;top:2px;width:32px;height:32px;border-radius:9999px;background:var(--brand-tint);display:grid;place-items:center;font-size:15px;z-index:1;border:2px solid var(--bg);box-shadow:var(--sh-1)}
-  .stage .scard{border:1px solid var(--border);border-radius:var(--r-lg);background:var(--surface);box-shadow:var(--sh-1);overflow:hidden}
-  .stage .sh{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface-subtle);border-bottom:1px solid var(--border)}
-  .stage .sh input{border:none;background:transparent;font-weight:600;color:var(--text-strong);padding:0}
-  .stage .sh input:focus{box-shadow:none}
-  .stage .sbody{padding:8px 10px;display:flex;flex-direction:column;gap:6px}
-  .stage .sbody textarea{min-height:36px;border-radius:6px;font-size:13px}
-  .stage .sbody input{height:32px;font-size:13px}
-  .stage .s-branch{color:#a4670f;background:var(--warning-tint)!important;border-color:#FFE0B8!important}
-  .stage .sactions{display:flex;gap:2px;margin-left:auto}
-  .stage .sact{border:none;background:transparent;color:var(--quiet);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:4px}
-  .stage .sact:hover{background:var(--fill-subtle);color:var(--text)}
+  .fstage{position:relative;padding-left:44px;margin-bottom:10px}
+  .fstage::before{content:"";position:absolute;left:15px;top:34px;bottom:-10px;width:2px;background:var(--border)}
+  .fstage:last-child::before{display:none}
+  .fstage .node{position:absolute;left:0;top:2px;width:32px;height:32px;border-radius:9999px;background:var(--brand-tint);display:grid;place-items:center;font-size:15px;z-index:1;border:2px solid var(--bg);box-shadow:var(--sh-1)}
+  .fstage .scard{border:1px solid var(--border);border-radius:var(--r-lg);background:var(--surface);box-shadow:var(--sh-1);overflow:hidden}
+  .fstage .sh{display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--surface-subtle);border-bottom:1px solid var(--border)}
+  .fstage .sh input{border:none;background:transparent;font-weight:600;color:var(--text-strong);padding:0}
+  .fstage .sh input:focus{box-shadow:none}
+  .fstage .sbody{padding:8px 10px}
+  .fstage .sbody textarea{min-height:38px;border-radius:6px;font-size:13px}
+  .fstage .sactions{display:flex;gap:2px;margin-left:auto}
+  .fstage .sact{border:none;background:transparent;color:var(--quiet);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:4px}
+  .fstage .sact:hover{background:var(--fill-subtle);color:var(--text)}
+  .cl-item.jump{cursor:pointer}
+  .cl-item.jump:hover{color:var(--brand)}
+  .btn-magic.done{background:var(--fill-subtle)!important;color:var(--muted)!important;box-shadow:none}
+  .ch-logo{width:30px;height:30px;flex:none;display:grid;place-items:center}
+  .ch-logo svg{width:26px;height:26px;display:block}
   /* источники */
   .src-add{display:flex;gap:8px;margin-bottom:8px}
   .src-add select{width:112px;flex:none;height:38px}
@@ -390,13 +393,11 @@ const DEFAULTS={
   languages:"Русский",
   stop_topics:"Политика, религия и посторонние темы. Не пишет код, стихи и не решает задачи вне сферы компании."
 };
+const NAME_OPTIONS=["Аяна","Динара","Алия","Санжар","Мия"];
 const DEFAULT_STAGES=[
-  {icon:"👋",title:"Приветствие",desc:"Поздороваться, представиться, тепло узнать, чем помочь.",msg:"здравствуйте! я {agent}, помощник {company} 🙂 чем могу помочь?",branch:""},
-  {icon:"🔍",title:"Квалификация",desc:"Задать 1–3 уточняющих вопроса: что нужно, для кого, сроки/бюджет.",msg:"",branch:"если клиент уже готов — сразу к целевому действию"},
-  {icon:"💡",title:"Ответ и презентация",desc:"Коротко ответить по сути, предложить решение, мягко закрыть сомнения.",msg:"",branch:"если вопрос вне знаний — передать менеджеру"},
-  {icon:"🎯",title:"Целевое действие",desc:"Подвести к КЭВ: предложить записаться / оставить заявку.",msg:"",branch:""},
-  {icon:"📩",title:"Сбор данных",desc:"Взять имя и телефон, подтвердить детали и вызвать save_lead.",msg:"",branch:""},
-  {icon:"🤝",title:"Передача менеджеру",desc:"Если нужен человек — вызвать escalate_to_human и успокоить клиента.",msg:"",branch:""}
+  {icon:"👋",title:"Приветствие и выяснение",desc:"Поздороваться, представиться и узнать, что нужно клиенту (1–2 уточняющих вопроса).",msg:"здравствуйте! я {agent}, помощник {company} 🙂 подскажите, что вас интересует?"},
+  {icon:"💡",title:"Ответ и предложение",desc:"Коротко ответить по сути, предложить подходящее решение, снять сомнения.",msg:""},
+  {icon:"🎯",title:"Целевое действие и данные",desc:"Подвести к КЭВ, взять имя и телефон и вызвать save_lead.",msg:""}
 ];
 const state={
   step:0,
@@ -418,8 +419,10 @@ const state={
 const STEPS=[
   {id:"welcome",render:renderWelcome,bare:true},
   {id:"template",cat:"Ниша",title:"С чего начнём?",sub:"Выберите нишу — так мы точнее подберём вопросы, стиль и подсказки под ваш бизнес.",render:renderTemplate},
-  {id:"sources",cat:"Источники",title:"Откуда берём информацию о бизнесе",sub:"Добавьте сайт, 2ГИС и/или Instagram — мы сами вытащим нужное. Можно и пропустить.",render:renderSources},
+  {id:"sources",cat:"Ссылки",title:"Ссылки на ваш бизнес",sub:"Вставьте любые ссылки — сайт, Instagram, 2ГИС, WhatsApp, Telegram. Мы сами вытащим нужное.",render:renderSources},
+  {id:"materials",cat:"Материалы",title:"Файлы и текст о компании",sub:"Скрипты, прайсы, описания услуг — всё, что поможет агенту. Необязательно.",render:renderMaterials},
   {id:"basics",cat:"О компании",title:"Расскажем, кто ваш агент",sub:"Часть полей мы уже заполнили из ваших источников — проверьте, что всё верно, и поправьте.",render:renderBasics},
+  {id:"prices",cat:"Цены",title:"Цены и прайс",sub:"Что агент может называть клиентам, а что — только после расчёта.",render:renderPrices},
   {id:"channels",cat:"Каналы",title:"Где будет работать агент?",sub:"Выберите канал(ы) — от этого зависит логика диалога.",render:renderChannels},
   {id:"goal",cat:"Цель",title:"К чему агент ведёт клиента?",sub:"Главное целевое действие (КЭВ). Выберите вариант, дополните двойным кликом или впишите свой.",render:renderGoal},
   {id:"style",cat:"Стиль",title:"Как агент общается?",sub:"Выберите тон. Двойной клик по примеру — отредактировать под себя.",render:renderStyle},
@@ -479,15 +482,15 @@ function updateProgress(){
 
 /* ================= ПАНЕЛЬ АГЕНТА ================= */
 const STRENGTH=[
-  {k:"sources",w:10,label:"Источники",test:()=>state.sources.length>0||state.parsedContext},
-  {k:"companyName",w:12,label:"Название",test:()=>state.data.companyName.trim()},
-  {k:"about",w:12,label:"О компании",test:()=>state.data.about.trim()},
-  {k:"goal",w:14,label:"Цель",test:()=>state.data.goal.trim()},
-  {k:"style",w:12,label:"Стиль",test:()=>state.data.style.trim()},
-  {k:"restrictions",w:10,label:"Запреты",test:()=>state.data.restrictions.length>0},
-  {k:"faq",w:14,label:"FAQ",test:()=>state.data.faq.length>0},
-  {k:"data",w:10,label:"Данные",test:()=>state.data.dataFields.length>0},
-  {k:"rules",w:6,label:"Язык/правила",test:()=>state.data.langs.trim()}
+  {k:"sources",w:10,label:"Источники",step:"sources",test:()=>state.sources.length>0||state.parsedContext},
+  {k:"companyName",w:12,label:"Название",step:"basics",test:()=>state.data.companyName.trim()},
+  {k:"about",w:12,label:"О компании",step:"basics",test:()=>state.data.about.trim()},
+  {k:"goal",w:14,label:"Цель",step:"goal",test:()=>state.data.goal.trim()},
+  {k:"style",w:12,label:"Стиль",step:"style",test:()=>state.data.style.trim()},
+  {k:"restrictions",w:10,label:"Запреты",step:"restrictions",test:()=>state.data.restrictions.length>0},
+  {k:"faq",w:14,label:"FAQ",step:"faq_q",test:()=>state.data.faq.length>0},
+  {k:"data",w:10,label:"Данные",step:"data",test:()=>state.data.dataFields.length>0},
+  {k:"rules",w:6,label:"Язык/правила",step:"rules",test:()=>state.data.langs.trim()}
 ];
 function agentScore(){ let s=0; STRENGTH.forEach(x=>{if(x.test())s+=x.w;}); return Math.min(100,s); }
 function tierFor(p){ if(p<20)return"Новорождённый";if(p<45)return"Ученик";if(p<70)return"Уверенный";if(p<95)return"Профи";return"Готов к бою 🔥"; }
@@ -500,8 +503,10 @@ function updateAgent(){
   document.getElementById("pBar").style.width=p+"%";
   document.getElementById("pPct").textContent=p+"%";
   const list=document.getElementById("pList"); list.innerHTML="";
-  STRENGTH.forEach(x=>{const done=!!x.test();const d=document.createElement("div");d.className="cl-item"+(done?" done":"");
-    d.innerHTML=`<span class="m">${done?"✓":""}</span>${x.label}`;list.appendChild(d);});
+  STRENGTH.forEach(x=>{const done=!!x.test();const d=document.createElement("div");d.className="cl-item"+(done?" done":"")+(x.step?" jump":"");
+    d.innerHTML=`<span class="m">${done?"✓":""}</span>${x.label}`;
+    if(x.step){const idx=STEPS.findIndex(s=>s.id===x.step);if(idx>0){d.title="Перейти к шагу";d.onclick=()=>go(idx);}}
+    list.appendChild(d);});
   const enc=document.getElementById("pEnc");
   enc.textContent = p>=100?"Агент полностью готов — можно тестировать! 🎉" : p>lastScore?"Отлично, агент стал сильнее! 💪" : "Заполняйте шаги — сила агента растёт ✨";
   if(p>lastScore){const a=document.getElementById("pAva");a.classList.remove("up");void a.offsetWidth;a.classList.add("up");}
@@ -545,10 +550,10 @@ function renderTemplate(el){
 
 /* ================= КАНАЛЫ ================= */
 const CHANNELS=[
-  {id:"whatsapp",icon:"🟢",title:"WhatsApp",desc:"Виден номер телефона клиента"},
-  {id:"instagram",icon:"📸",title:"Instagram Direct",desc:"Номера не видно — при необходимости спрашиваем"},
-  {id:"telegram",icon:"✈️",title:"Telegram",desc:"Переписка в Telegram"},
-  {id:"site",icon:"🌐",title:"Виджет на сайте",desc:"Чат на сайте компании"}
+  {id:"whatsapp",svg:'<svg viewBox="0 0 24 24"><path fill="#25D366" d="M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2z"/><path fill="#fff" d="M9.4 7.3c-.2-.5-.4-.5-.6-.5h-.5c-.2 0-.5 0-.7.3-.3.2-1 .9-1 2.3s1 2.7 1.1 2.8c.2.2 2 3.1 4.9 4.3 2.4 1 2.9.8 3.4.7.5 0 1.6-.6 1.8-1.3.2-.6.2-1.2.2-1.3-.1-.1-.3-.2-.6-.3l-1.7-.8c-.2-.1-.4-.1-.5.1l-.8 1c-.2.1-.3.2-.6.1-.6-.3-1.4-.5-2.2-1.3-.7-.6-1.1-1.4-1.3-1.6-.1-.2 0-.4.1-.5l.4-.4c.1-.2.2-.3.2-.5.1-.2 0-.3 0-.5l-.7-1.9z"/></svg>',title:"WhatsApp",desc:"Виден номер телефона клиента"},
+  {id:"instagram",svg:'<svg viewBox="0 0 24 24"><defs><linearGradient id="iglg" x1="0" y1="1" x2="1" y2="0"><stop offset="0" stop-color="#FEDA75"/><stop offset=".5" stop-color="#D62976"/><stop offset="1" stop-color="#4F5BD5"/></linearGradient></defs><rect x="2" y="2" width="20" height="20" rx="6" fill="url(#iglg)"/><circle cx="12" cy="12" r="4.2" fill="none" stroke="#fff" stroke-width="1.7"/><circle cx="17.2" cy="6.8" r="1.2" fill="#fff"/></svg>',title:"Instagram Direct",desc:"Номера не видно — при необходимости спрашиваем"},
+  {id:"telegram",svg:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#29A9EB"/><path fill="#fff" d="M17.6 7.4 5.9 12c-.6.2-.6.6-.1.8l2.7.8 1 3.2c.1.4.3.4.6.2l1.5-1.4 3 2.2c.3.2.6.1.7-.3l2-9.5c.1-.5-.2-.7-.6-.6z"/><path fill="#c8e6f7" d="m8.5 13.6 6.4-4-5 4.5-.1 2z"/></svg>',title:"Telegram",desc:"Переписка в Telegram"},
+  {id:"site",svg:'<svg viewBox="0 0 24 24" fill="none" stroke="#675DFF" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.8 2.8 2.8 15.2 0 18M12 3c-2.8 2.8-2.8 15.2 0 18"/></svg>',title:"Виджет на сайте",desc:"Чат на сайте компании"}
 ];
 function renderChannels(el){
   const D=state.data;
@@ -557,7 +562,7 @@ function renderChannels(el){
     <div class="hintbox">💡 В WhatsApp номер клиента виден — повторно спрашивать не нужно. В Instagram номера нет — если он нужен, агент вежливо попросит.</div>`;
   const box=el.querySelector("#chList");
   function draw(){box.innerHTML="";CHANNELS.forEach(c=>{const on=D.channels.includes(c.id);const o=document.createElement("label");o.className="opt"+(on?" sel":"");
-    o.innerHTML=`<div class="ot"><span style="font-size:18px;margin-right:10px">${c.icon}</span><span class="ot-text"><b>${c.title}</b><div style="color:var(--muted);font-size:13px;font-weight:400;margin-top:2px">${c.desc}</div></span><span class="oradio" style="border-radius:5px"></span></div>`;
+    o.innerHTML=`<div class="ot"><span class="ch-logo" style="margin-right:10px">${c.svg}</span><span class="ot-text"><b>${c.title}</b><div style="color:var(--muted);font-size:13px;font-weight:400;margin-top:2px">${c.desc}</div></span><span class="oradio" style="border-radius:5px"></span></div>`;
     o.onclick=()=>{if(on)D.channels=D.channels.filter(x=>x!==c.id);else D.channels.push(c.id);draw();updateAgent();};box.appendChild(o);});
     const note=el.querySelector("#chNote");
     note.innerHTML = D.channels.length>1 ? '<div class="statusbar" style="background:var(--warning-tint);color:#a4670f;border-color:#FFE0B8">Выбрано несколько каналов. Логика в них отличается (например, видимость номера) — часто удобнее сделать отдельного агента под каждый канал. Но мы учтём все выбранные.</div>' : "";}
@@ -576,70 +581,34 @@ function editableText(el,onSave){
 }
 
 /* ================= ИСТОЧНИКИ ================= */
-const SRC_META={website:{icon:"🌐",label:"Сайт"},"2gis":{icon:"📍",label:"2ГИС"},instagram:{icon:"📸",label:"Instagram"},file:{icon:"📄",label:"Файл/текст"}};
-function detectType(c){ if(/2gis/i.test(c))return"2gis"; if(/instagram\.com/i.test(c)||c.startsWith("@"))return"instagram"; return"website"; }
-function normalize(raw,type){
+const SRC_META={website:{icon:"🌐",label:"Сайт"},"2gis":{icon:"📍",label:"2ГИС"},instagram:{icon:"📸",label:"Instagram"},link:{icon:"🔗",label:"Ссылка"},file:{icon:"📄",label:"Файл/текст"}};
+function detectType(c){ if(/2gis/i.test(c))return"2gis"; if(/instagram\.com/i.test(c)||c.startsWith("@"))return"instagram"; if(/wa\.me|whatsapp|api\.whatsapp|t\.me|telegram\.me|tg:\/\//i.test(c))return"link"; return"website"; }
+function normalize(raw){
   let s=(raw||"").trim(); if(!s)return{error:"Введите ссылку"};
   if(s.startsWith("@")){const h=s.slice(1).replace(/[^a-z0-9._]/gi,"");if(!h)return{error:"Некорректный ник Instagram"};return{clean:"instagram.com/"+h,full:"https://instagram.com/"+h,type:"instagram"};}
   s=s.replace(/^https?:\/\//i,"").replace(/^www\./i,"").replace(/\s+/g,"").replace(/\/+$/,"");
   const host=s.split("/")[0];
-  if(!/^[a-z0-9а-я.-]+\.[a-zа-я]{2,}$/i.test(host))return{error:"Похоже, это не ссылка. Пример: site.kz, 2gis.kz/... или instagram.com/name"};
-  const t=(type&&type!=="auto")?type:detectType(s);
-  return{clean:s,full:"https://"+s,type:t};
+  if(!/^[a-z0-9а-я.-]+\.[a-zа-я]{2,}$/i.test(host))return{error:"Похоже, это не ссылка. Пример: site.kz, instagram.com/name, wa.me/7..."};
+  return{clean:s,full:"https://"+s,type:detectType(s)};
 }
 function renderSources(el){
   el.innerHTML=`
     <div class="src-add">
-      <select id="srcType"><option value="auto">Авто</option><option value="website">Сайт</option><option value="2gis">2ГИС</option><option value="instagram">Instagram</option></select>
-      <input type="text" id="srcInput" placeholder="site.kz · 2gis.kz/... · instagram.com/..." />
+      <input type="text" id="srcInput" placeholder="Вставьте ссылку: сайт, Instagram, 2ГИС, WhatsApp, Telegram…" />
       <button class="btn btn-primary" id="srcAdd">Добавить</button>
     </div>
     <div class="src-err" id="srcErr"></div>
-    <div style="display:flex;gap:8px;margin:2px 0 8px;flex-wrap:wrap">
-      <label class="btn btn-ghost" style="cursor:pointer">📎 Добавить файл<input type="file" id="srcFile" accept=".txt,.md,.markdown,.csv,.json,.text,.log,.pdf" style="display:none"></label>
-      <button class="btn btn-ghost" id="srcTextBtn">✍️ Вставить текст</button>
-    </div>
-    <div id="srcTextWrap" style="display:none;margin-bottom:8px">
-      <textarea id="srcText" placeholder="Вставьте любой текст о компании: услуги, цены, условия, УТП..."></textarea>
-      <button class="btn btn-primary" id="srcTextAdd" style="margin-top:6px;height:34px">Добавить текст</button>
-    </div>
     <div class="src-list" id="srcList"></div>
     <div id="srcStatus"></div>
     <div id="parseArea"></div>
-    <div class="hintbox">💡 Протокол http://, https://, www — писать не нужно, уберём сами. Можно добавить файл (.pdf, .txt, .md, .csv) или вставить текст. Больше источников = точнее агент.</div>`;
-  const inp=el.querySelector("#srcInput"),err=el.querySelector("#srcErr"),typeSel=el.querySelector("#srcType");
-  // файл
-  el.querySelector("#srcFile").addEventListener("change",async e=>{
-    const f=e.target.files[0]; if(!f) return;
-    if(f.size>10e6){err.textContent="Файл слишком большой (макс 10 МБ)";e.target.value="";return;}
-    err.textContent="";
-    const nm=f.name.toLowerCase();
-    if(nm.endsWith(".pdf")){
-      toast("Читаю PDF…");
-      try{
-        const b64=await new Promise(r=>{const rd=new FileReader();rd.onload=()=>r((rd.result+"").split(",")[1]);rd.readAsDataURL(f);});
-        const resp=await fetch("/api/extract",{method:"POST",headers:apiHeaders(),body:JSON.stringify({name:f.name,base64:b64})});
-        const j=await resp.json();
-        if(j.ok&&(j.text||"").trim()){ state.sources.push({id:Date.now()+""+Math.random(),type:"file",clean:f.name,text:j.text.slice(0,20000)}); drawSources();updateAgent(); toast("PDF добавлен ✓"); }
-        else err.textContent="Не удалось прочитать PDF: "+(j.error||"пусто");
-      }catch(ex){ err.textContent="Ошибка чтения PDF"; }
-    }else{
-      const rd=new FileReader();
-      rd.onload=()=>{ state.sources.push({id:Date.now()+""+Math.random(),type:"file",clean:f.name,text:(rd.result||"").slice(0,20000)}); drawSources();updateAgent(); };
-      rd.readAsText(f);
-    }
-    e.target.value="";
-  });
-  // вставить текст
-  el.querySelector("#srcTextBtn").onclick=()=>{const w=el.querySelector("#srcTextWrap");w.style.display=w.style.display==="none"?"block":"none";};
-  el.querySelector("#srcTextAdd").onclick=()=>{const ta=el.querySelector("#srcText");const v=ta.value.trim();if(!v)return;
-    state.sources.push({id:Date.now()+""+Math.random(),type:"file",clean:"Вставленный текст",text:v.slice(0,20000)});ta.value="";el.querySelector("#srcTextWrap").style.display="none";drawSources();updateAgent();};
+    <div class="hintbox">💡 Просто вставляйте любые ссылки — тип определим сами (сайт / Instagram / 2ГИС / WhatsApp / Telegram). Протокол http://, www — можно не писать. Скрипты, прайсы и любые файлы — на следующем шаге.</div>`;
+  const inp=el.querySelector("#srcInput"),err=el.querySelector("#srcErr");
   function add(){
-    const r=normalize(inp.value,typeSel.value);
+    const r=normalize(inp.value);
     if(r.error){err.textContent=r.error;return;}
     if(state.sources.some(x=>x.clean===r.clean)){err.textContent="Эта ссылка уже добавлена";return;}
     err.textContent="";state.sources.push({id:Date.now()+""+Math.random(),type:r.type,clean:r.clean,full:r.full});
-    inp.value="";typeSel.value="auto";drawSources();updateAgent();
+    inp.value="";drawSources();updateAgent();
   }
   el.querySelector("#srcAdd").onclick=add;
   inp.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();add();}});
@@ -650,17 +619,67 @@ function renderSources(el){
 }
 function drawSources(){
   const list=document.getElementById("srcList"); if(!list)return; list.innerHTML="";
-  state.sources.forEach(src=>{const m=SRC_META[src.type];const d=document.createElement("div");d.className="chip";d.dataset.id=src.id;
+  const links=state.sources.filter(s=>s.type!=="file");
+  links.forEach(src=>{const m=SRC_META[src.type];const d=document.createElement("div");d.className="chip";d.dataset.id=src.id;
     d.innerHTML=`<div class="ic">${m.icon}</div><div class="meta"><div class="t">${esc(src.clean)}</div><div class="s">${m.label}</div></div><span class="st wait" data-st>готов</span><button class="rm">×</button>`;
-    d.querySelector(".rm").onclick=()=>{state.sources=state.sources.filter(x=>x.id!==src.id);drawSources();updateAgent();refreshNext();};list.appendChild(d);});
+    d.querySelector(".rm").onclick=()=>{state.sources=state.sources.filter(x=>x.id!==src.id);drawSources();updateAgent();};list.appendChild(d);});
   const st=document.getElementById("srcStatus");
-  if(st){const n=state.sources.length;const msgs={1:"Одна ссылка — окей 👍 Можно двигаться дальше.",2:"Две ссылки — хорошо 🙌 Добротная база.",3:"Три источника — отлично, супер! 🚀"};
+  if(st){const n=links.length;const msgs={1:"Одна ссылка — окей 👍",2:"Две ссылки — хорошо 🙌",3:"Три источника — отлично! 🚀"};
     st.innerHTML=n?`<div class="statusbar">${msgs[n]||"Источников много — топ! 🔥"}</div>`:"";}
-  refreshNext();
 }
-function refreshNext(){const nb=document.getElementById("nextBtn");if(!nb)return;
-  if(state.sources.length&&!state.generated){nb.textContent="⚡ Собрать информацию";nb.onclick=runParsing;}
-  else{nb.textContent=state.generated?"Далее →":"Пропустить →";nb.onclick=next;}}
+function drawMaterials(){
+  const list=document.getElementById("matList"); if(!list)return; list.innerHTML="";
+  const files=state.sources.filter(s=>s.type==="file");
+  files.forEach(src=>{const d=document.createElement("div");d.className="chip";d.dataset.id=src.id;
+    d.innerHTML=`<div class="ic">📄</div><div class="meta"><div class="t">${esc(src.clean)}</div><div class="s">${(src.text||"").length} симв.</div></div><span class="st wait" data-st>готов</span><button class="rm">×</button>`;
+    d.querySelector(".rm").onclick=()=>{state.sources=state.sources.filter(x=>x.id!==src.id);drawMaterials();updateAgent();};list.appendChild(d);});
+  const st=document.getElementById("matStatus");
+  if(st){const n=files.length;st.innerHTML=n?`<div class="statusbar">Добавлено материалов: ${n} 📎</div>`:"";}
+}
+/* ================= ШАГ: МАТЕРИАЛЫ (файлы/текст) ================= */
+function renderMaterials(el){
+  el.innerHTML=`
+    <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+      <label class="btn btn-primary" style="cursor:pointer">📎 Добавить файл<input type="file" id="matFile" accept=".txt,.md,.markdown,.csv,.json,.text,.log,.pdf" style="display:none"></label>
+      <button class="btn btn-ghost" id="matTextBtn">✍️ Вставить текст</button>
+    </div>
+    <div class="src-err" id="matErr"></div>
+    <div id="matTextWrap" style="display:none;margin-bottom:8px">
+      <textarea id="matText" placeholder="Вставьте скрипты продаж, прайс, условия, частые вопросы — всё, что поможет агенту"></textarea>
+      <button class="btn btn-primary" id="matTextAdd" style="margin-top:6px;height:34px">Добавить текст</button>
+    </div>
+    <div class="src-list" id="matList"></div>
+    <div id="matStatus"></div>
+    <div id="parseArea"></div>
+    <div class="hintbox">📎 Полезно приложить: <b>скрипты продаж, прайс-лист, описание услуг, условия, частые вопросы с ответами, УТП</b>. Форматы: PDF, TXT, MD, CSV — или просто вставьте текст. Это необязательно, можно пропустить.</div>`;
+  const err=el.querySelector("#matErr");
+  el.querySelector("#matFile").addEventListener("change",async e=>{
+    const f=e.target.files[0]; if(!f) return;
+    if(f.size>10e6){err.textContent="Файл слишком большой (макс 10 МБ)";e.target.value="";return;}
+    err.textContent="";
+    const nm=f.name.toLowerCase();
+    if(nm.endsWith(".pdf")){
+      toast("Читаю PDF…");
+      try{
+        const b64=await new Promise(r=>{const rd=new FileReader();rd.onload=()=>r((rd.result+"").split(",")[1]);rd.readAsDataURL(f);});
+        const resp=await fetch("/api/extract",{method:"POST",headers:apiHeaders(),body:JSON.stringify({name:f.name,base64:b64})});
+        const j=await resp.json();
+        if(j.ok&&(j.text||"").trim()){ state.sources.push({id:Date.now()+""+Math.random(),type:"file",clean:f.name,text:j.text.slice(0,20000)}); drawMaterials();updateAgent(); toast("PDF добавлен ✓"); }
+        else err.textContent="Не удалось прочитать PDF: "+(j.error||"пусто");
+      }catch(ex){ err.textContent="Ошибка чтения PDF"; }
+    }else{
+      const rd=new FileReader();
+      rd.onload=()=>{ state.sources.push({id:Date.now()+""+Math.random(),type:"file",clean:f.name,text:(rd.result||"").slice(0,20000)}); drawMaterials();updateAgent(); };
+      rd.readAsText(f);
+    }
+    e.target.value="";
+  });
+  el.querySelector("#matTextBtn").onclick=()=>{const w=el.querySelector("#matTextWrap");w.style.display=w.style.display==="none"?"block":"none";};
+  el.querySelector("#matTextAdd").onclick=()=>{const ta=el.querySelector("#matText");const v=ta.value.trim();if(!v)return;
+    state.sources.push({id:Date.now()+""+Math.random(),type:"file",clean:"Вставленный текст",text:v.slice(0,20000)});ta.value="";el.querySelector("#matTextWrap").style.display="none";drawMaterials();updateAgent();};
+  drawMaterials();
+  setTimeout(()=>{const nb=document.getElementById("nextBtn");if(nb){ if(state.sources.length&&!state.generated){nb.textContent="⚡ Собрать информацию";nb.onclick=runParsing;} else {nb.textContent=state.generated?"Далее →":"Пропустить →";nb.onclick=next;} }},0);
+}
 
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const STEP_LABELS=["🔎 Проверяю источники","🌐 Открываю страницы","📥 Забираю данные","🧹 Чищу от лишнего","🧠 Анализирую через ИИ","🗂️ Раскладываю по блокам","✅ Готово"];
@@ -678,6 +697,7 @@ async function runParsing(){
   const results=[]; let okCount=0;
   for(const src of state.sources){
     if(src.type==="file"){ results.push({type:"file",clean:src.clean,data:{text:src.text}}); chipStatus(src.id,"done","готово ✓"); okCount++; continue; }
+    if(src.type==="link"){ results.push({type:"link",clean:src.clean}); chipStatus(src.id,"done","сохранено"); continue; }
     chipStatus(src.id,"run","собираю…");
     try{const r=await fetch("/api/parse",{method:"POST",headers:apiHeaders(),body:JSON.stringify({type:src.type,url:src.full})});
       const j=await r.json();
@@ -720,6 +740,7 @@ function buildContext(results){
     if(r.type==="2gis")out.push(kv("Название",d.company_name),kv("Категория",d.company_category),kv("Адрес",d.company_address),kv("Часы",d.working_hours),kv("Телефон",d.phone_number));
     else if(r.type==="instagram"){out.push(kv("Профиль",d.ig_display_name||d.ig_username),kv("Описание",d.ig_bio),kv("Ссылка",d.ig_bio_link),kv("Подписчиков",d.ig_followers_count));
       if(Array.isArray(d.ig_recent_captions)&&d.ig_recent_captions.length)out.push("Посты:\n"+d.ig_recent_captions.slice(0,8).map(c=>"— "+c).join("\n"));}
+    else if(r.type==="link")out.push("(контакт / ссылка клиента)");
     else out.push(d.text||d.raw||"(пусто)");
     out.push("");});
   return out.filter(x=>x!=="").join("\n");
@@ -796,27 +817,45 @@ function renderBasics(el){
       <div class="field"><label class="lbl">График работы</label><input type="text" id="f_hours" value="${escA(D.hours)}" placeholder="Пн–Сб 9:00–20:00"></div>
     </div>
     <div class="row2">
-      <div class="field"><label class="lbl">Валюта</label><input type="text" id="f_curr" value="${escA(D.currency)}" placeholder="₸ (тенге), ₽, $, €..."></div>
-      <div class="field"><label class="lbl">Часовой пояс</label><input type="text" id="f_tz" value="${escA(D.timezone)}" placeholder="Алматы (UTC+5)"></div>
+      <div class="field"><label class="lbl">Валюта</label>
+        <select id="f_curr_sel"></select>
+        <input type="text" id="f_curr_custom" placeholder="Своя валюта" style="display:none;margin-top:6px"></div>
+      <div class="field"><label class="lbl">Часовой пояс</label>
+        <select id="f_tz_sel"></select>
+        <input type="text" id="f_tz_custom" placeholder="Свой пояс" style="display:none;margin-top:6px"></div>
     </div>
-    <div class="field"><label class="lbl">Цены / прайс <span style="color:var(--quiet);font-weight:400">(что можно называть)</span></label><textarea id="f_price" placeholder="Первичный приём — бесплатно. Чистка — от 15 000 ₸...">${esc(D.pricing)}</textarea></div>
     ${magicBtn("basicsMagic")}
-    <div class="hintbox">💡 Имя и описание можно оставить как есть или поправить. Аватар выберите по вкусу — он появится в панели агента.</div>`;
-  // варианты имени
+    <div class="hintbox">💡 Имя и описание можно оставить как есть или поправить. Аватар выберите по вкусу — он появится в панели агента. Цены и прайс — на отдельном шаге.</div>`;
+  // варианты имени (фиксированный набор — казахские и русские)
   const nameInp=el.querySelector("#f_agent");
-  if(S.agent_names&&S.agent_names.length){const chips=document.createElement("div");chips.className="chips";chips.style.marginTop="8px";
-    S.agent_names.forEach(n=>{const c=document.createElement("span");c.className="dchip";c.textContent=n;c.onclick=()=>{nameInp.value=n;D.agentName=n;updateAgent();};chips.appendChild(c);});
-    nameInp.parentElement.appendChild(chips);}
+  const chips=document.createElement("div");chips.className="chips";chips.style.marginTop="8px";
+  NAME_OPTIONS.forEach(n=>{const c=document.createElement("span");c.className="dchip";c.textContent=n;c.onclick=()=>{nameInp.value=n;D.agentName=n;updateAgent();};chips.appendChild(c);});
+  nameInp.parentElement.appendChild(chips);
+  // валюта / пояс
+  setupSelect("f_curr",CURRENCIES,v=>D.currency=v,D.currency);
+  setupSelect("f_tz",TIMEZONES,v=>D.timezone=v,D.timezone);
   // аватары
   const ap=el.querySelector("#avaPick");
   AVATARS.forEach(a=>{const c=document.createElement("span");c.className="dchip"+(D.avatar===a?" on":"");c.textContent=a;c.style.fontSize="18px";
     c.onclick=()=>{D.avatar=a;ap.querySelectorAll(".dchip").forEach(x=>x.classList.remove("on"));c.classList.add("on");updateAgent();};ap.appendChild(c);});
   // биндинги
   bind(el,"#f_name",v=>D.companyName=v);bind(el,"#f_about",v=>D.about=v);bind(el,"#f_agent",v=>D.agentName=v);
-  bind(el,"#f_geo",v=>D.geo=v);bind(el,"#f_hours",v=>D.hours=v);bind(el,"#f_price",v=>D.pricing=v);
-  bind(el,"#f_curr",v=>D.currency=v);bind(el,"#f_tz",v=>D.timezone=v);
+  bind(el,"#f_geo",v=>D.geo=v);bind(el,"#f_hours",v=>D.hours=v);
   wireMagic(el,"basicsMagic");
   STEPS[state.step].onNext=()=>{}; // значения уже в state через bind
+}
+
+/* ================= ШАГ: ЦЕНЫ ================= */
+function renderPrices(el){
+  const D=state.data;
+  el.innerHTML=`
+    <div class="field"><label class="lbl">Цены и прайс <span style="color:var(--quiet);font-weight:400">(что агент может называть)</span></label>
+      <div class="hint">Что можно озвучивать, а что «только после расчёта / осмотра». Валюта: ${esc(D.currency||"не задана")}.</div>
+      <textarea id="f_price" style="min-height:170px" placeholder="Первичный приём — бесплатно. Чистка — от 15 000 ₸. Имплант — от 180 000 ₸ (точно после осмотра).">${esc(D.pricing)}</textarea></div>
+    ${magicBtn("priceMagic")}
+    <div class="hintbox">💰 Если точные цены называть нельзя — так и напишите («только после консультации»). Агент будет этого придерживаться. Можно пропустить.</div>`;
+  bind(el,"#f_price",v=>D.pricing=v);
+  wireMagic(el,"priceMagic");
 }
 
 /* ================= ШАГ: ЦЕЛЬ ================= */
@@ -882,38 +921,36 @@ function renderFlow(el){
   el.innerHTML=`<div style="margin-bottom:14px"><button class="btn btn-magic" id="stGen">✨ Сгенерировать сценарий под нишу</button></div>
     <div class="flow" id="flowList"></div>
     <button class="btn btn-ghost" id="stAdd" style="margin-top:4px">+ Добавить этап</button>
-    <div class="hintbox">🗺️ Гибкий каркас: агент идёт примерно по этим этапам, подстраиваясь под клиента. «Ветка» — что делать в особом случае (если … то …).</div>`;
+    <div class="hintbox">🗺️ Гибкий каркас из нескольких этапов: что агент делает на каждом шаге и как звучит. По умолчанию 3 этапа — добавляйте свои при необходимости.</div>`;
   const list=el.querySelector("#flowList");
-  function draw(){list.innerHTML="";D.stages.forEach((s,i)=>{const d=document.createElement("div");d.className="stage";
+  function draw(){list.innerHTML="";D.stages.forEach((s,i)=>{const d=document.createElement("div");d.className="fstage";
     d.innerHTML=`<div class="node">${s.icon||(i+1)}</div>
       <div class="scard">
         <div class="sh"><input class="s-title" value="${escA(s.title)}" placeholder="Название этапа">
           <div class="sactions"><button class="sact" data-up title="Вверх">↑</button><button class="sact" data-down title="Вниз">↓</button><button class="sact" data-del title="Удалить">✕</button></div></div>
         <div class="sbody">
-          <textarea class="s-desc" placeholder="Что делает агент на этом этапе">${esc(s.desc)}</textarea>
-          <input type="text" class="s-msg" value="${escA(s.msg)}" placeholder="Пример реплики (необязательно)">
-          <input type="text" class="s-branch" value="${escA(s.branch)}" placeholder="Ветка: если …, то …">
+          <textarea class="s-desc" placeholder="Что агент делает на этом этапе">${esc(s.desc)}</textarea>
+          <input type="text" class="s-msg" value="${escA(s.msg)}" placeholder="Пример реплики (необязательно)" style="margin-top:6px;height:32px;font-size:13px">
         </div>
       </div>`;
     d.querySelector(".s-title").addEventListener("input",e=>s.title=e.target.value);
     d.querySelector(".s-desc").addEventListener("input",e=>s.desc=e.target.value);
     d.querySelector(".s-msg").addEventListener("input",e=>s.msg=e.target.value);
-    d.querySelector(".s-branch").addEventListener("input",e=>s.branch=e.target.value);
     d.querySelector("[data-up]").onclick=()=>{if(i>0){const t=D.stages[i-1];D.stages[i-1]=D.stages[i];D.stages[i]=t;draw();}};
     d.querySelector("[data-down]").onclick=()=>{if(i<D.stages.length-1){const t=D.stages[i+1];D.stages[i+1]=D.stages[i];D.stages[i]=t;draw();}};
     d.querySelector("[data-del]").onclick=()=>{D.stages.splice(i,1);draw();};
     list.appendChild(d);});}
   draw();
-  el.querySelector("#stAdd").onclick=()=>{D.stages.push({icon:"•",title:"Новый этап",desc:"",msg:"",branch:""});draw();};
+  el.querySelector("#stAdd").onclick=()=>{D.stages.push({icon:"•",title:"Новый этап",desc:"",msg:""});draw();};
   el.querySelector("#stGen").onclick=async(ev)=>{
     const hasKey=health.keys&&(provider==="anthropic"?health.keys.anthropic:health.keys.openai);
     if(!hasKey){toast("Ключ модели не задан на сервере");return;}
     const b=ev.target;b.disabled=true;b.textContent="✨ Генерирую...";
     try{
-      const sys=`Составь сценарий диалога ИИ-агента продаж/поддержки. Верни СТРОГО JSON-массив из 4–7 этапов вида [{"icon":"эмодзи","title":"","desc":"","msg":"пример реплики или пусто","branch":"если...то... или пусто"}] на русском. Логика: приветствие → квалификация → ответ/презентация → целевое действие → сбор данных → передача менеджеру, адаптируй под нишу и цель.`;
+      const sys=`Составь сценарий диалога ИИ-агента продаж/поддержки. Верни СТРОГО JSON-массив из 3–5 этапов вида [{"icon":"эмодзи","title":"","desc":"что агент делает на этапе","msg":"пример реплики или пусто"}] на русском. Логика кратко: приветствие/выяснение → ответ/предложение → целевое действие и сбор данных. Адаптируй под нишу и цель, без воды.`;
       const u=`Ниша: ${D.niche||"—"}. Компания: ${D.companyName}. О компании: ${D.about}. Цель (КЭВ): ${D.goal}.`;
       const txt=await callLLMOnce(sys,u,"suggestions",2000);
-      const m=txt.match(/\[[\s\S]*\]/);if(m){const arr=JSON.parse(m[0]);if(arr.length){D.stages=arr.map(s=>({icon:s.icon||"•",title:s.title||"",desc:s.desc||"",msg:s.msg||"",branch:s.branch||""}));draw();toast("Сценарий готов ✨");}}
+      const m=txt.match(/\[[\s\S]*\]/);if(m){const arr=JSON.parse(m[0]);if(arr.length){D.stages=arr.map(s=>({icon:s.icon||"•",title:s.title||"",desc:s.desc||"",msg:s.msg||""}));draw();toast("Сценарий готов ✨");}}
     }catch(e){toast("Не вышло — этапы можно задать вручную");}
     b.disabled=false;b.textContent="✨ Сгенерировать сценарий под нишу";
   };
@@ -1129,7 +1166,7 @@ function buildPrompt(){
   p+=B("КАНАЛ ОБЩЕНИЯ",chText);
   p+=B("КОНТЕКСТ",[D.geo?("Город/адрес: "+D.geo):"",D.hours?("График: "+D.hours):"",D.currency?("Валюта: "+D.currency):"",D.timezone?("Часовой пояс: "+D.timezone):""].filter(Boolean).join("\n"));
   p+=B("ГЛАВНАЯ ЦЕЛЬ (КЭВ)",D.goal?D.goal+"\n\nВеди к этой цели естественно, не навязчиво. Сначала закрой вопросы и сомнения клиента.":"");
-  const stagesTxt=(D.stages||[]).map((s,i)=>`${i+1}. ${s.title}${s.desc?" — "+s.desc:""}${s.msg?`\n   Пример: «${s.msg}»`:""}${s.branch?`\n   Ветка: ${s.branch}`:""}`).join("\n").replace(/\{agent\}/g,agentName||"ассистент").replace(/\{company\}/g,company);
+  const stagesTxt=(D.stages||[]).map((s,i)=>`${i+1}. ${s.title}${s.desc?" — "+s.desc:""}${s.msg?`\n   Пример: «${s.msg}»`:""}`).join("\n").replace(/\{agent\}/g,agentName||"ассистент").replace(/\{company\}/g,company);
   p+=B("СЦЕНАРИЙ ДИАЛОГА",stagesTxt?stagesTxt+"\n\nВеди диалог примерно по этим этапам, гибко подстраиваясь под клиента.":"");
   p+=B("ЗНАНИЯ / FAQ",faq);
   p+=B("ЦЕНЫ",D.pricing);
@@ -1339,7 +1376,9 @@ async function boot(){
 
 /* ================= МАГИЯ-КНОПКА ================= */
 function magicBtn(id){return `<div style="margin-top:6px"><button class="btn btn-magic" id="${id}">✨ Заполнить магией из источников</button></div>`;}
-function wireMagic(el,id){const b=el.querySelector("#"+id);if(!b)return;b.onclick=async()=>{
+function wireMagic(el,id){const b=el.querySelector("#"+id);if(!b)return;
+  if(state.generated){ b.classList.add("done"); b.textContent="✨ Уже заполнено — обновить"; b.title="Данные уже подтянуты из источников. Можно нажать, чтобы пересобрать, или править поля вручную."; }
+  b.onclick=async()=>{
   const hasKey=health.keys && (provider==="anthropic"?health.keys.anthropic:health.keys.openai);
   if(!hasKey){toast("Ключ модели не задан на сервере");return;}
   b.disabled=true;const o=b.textContent;b.textContent="✨ Магия...";
@@ -1352,6 +1391,16 @@ function wireMagic(el,id){const b=el.querySelector("#"+id);if(!b)return;b.onclic
 
 /* ================= УТИЛИТЫ ================= */
 function bind(el,sel,fn){const e=el.querySelector(sel);if(!e)return;e.addEventListener("input",()=>{fn(e.value);updateAgent();});}
+const CURRENCIES=["₸ тенге (KZT)","₽ рубль (RUB)","$ доллар (USD)","€ евро (EUR)","сум (UZS)"];
+const TIMEZONES=["Алматы / Астана (UTC+5)","Ташкент (UTC+5)","Бишкек (UTC+6)","Москва (UTC+3)","Тбилиси (UTC+4)","Киев (UTC+2)"];
+function setupSelect(id,options,setter,current){
+  const sel=document.getElementById(id+"_sel"),inp=document.getElementById(id+"_custom");if(!sel)return;
+  sel.innerHTML='<option value="">— выберите —</option>'+options.map(o=>`<option>${o}</option>`).join("")+'<option value="__custom">Другое…</option>';
+  if(current&&options.includes(current)){sel.value=current;}
+  else if(current){sel.value="__custom";if(inp){inp.style.display="block";inp.value=current;}}
+  sel.onchange=()=>{ if(sel.value==="__custom"){if(inp){inp.style.display="block";setter(inp.value.trim());}} else {if(inp)inp.style.display="none";setter(sel.value==="— выберите —"?"":sel.value);} updateAgent(); };
+  if(inp)inp.addEventListener("input",()=>{setter(inp.value.trim());updateAgent();});
+}
 function esc(s){return (s==null?"":String(s)).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
 function escA(s){return (s==null?"":String(s)).replace(/"/g,"&quot;").replace(/</g,"&lt;");}
 let toastT;function toast(msg){let t=document.getElementById("toast");if(!t){t=document.createElement("div");t.id="toast";t.style.cssText="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#050A22;color:#fff;padding:10px 18px;border-radius:9999px;z-index:70;font-size:13px;box-shadow:var(--sh-3);transition:.2s";document.body.appendChild(t);}t.textContent=msg;t.style.opacity="1";clearTimeout(toastT);toastT=setTimeout(()=>t.style.opacity="0",2200);}
