@@ -916,7 +916,7 @@ async function generateSuggestions(context){
   if(g.address&&!D.geo)D.geo=g.address;
   if(g.working_hours&&!D.hours)D.hours=g.working_hours;
   if(g.prices&&!D.pricing)D.pricing=g.prices;
-  if(!D.agentName&&S.agent_names[0])D.agentName=S.agent_names[0];
+  if(!D.agentName)D.agentName=NAME_OPTIONS[0];
   if(S.languages)D.langs=S.languages;
   if(S.stop_topics)D.stoptopics=S.stop_topics;
 }
