@@ -65,7 +65,11 @@
   .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-2xl);box-shadow:var(--sh-1)}
   .stage{padding:28px;min-height:420px;display:flex;flex-direction:column}
   .step-head{margin-bottom:18px}
-  .step-kicker{color:var(--primary);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px}
+  .step-kicker{color:var(--primary);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .substep{display:inline-flex;align-items:center;gap:4px;font-weight:500;text-transform:none;letter-spacing:0;color:var(--quiet)}
+  .substep i{width:14px;height:4px;border-radius:9999px;background:var(--fill-subtle);display:inline-block}
+  .substep i.on{background:var(--primary)}
+  .substep b{font-weight:500;margin-left:2px}
   .step-title{font-size:24px;font-weight:600;line-height:30px;margin-bottom:6px}
   .step-sub{color:var(--muted);font-size:14px}
   .step-body{flex:1}
@@ -485,8 +489,8 @@ const STEPS=[
   {id:"style",cat:"Стиль",title:"Как агент общается?",sub:"Выберите тон. Двойной клик по примеру — отредактировать под себя.",render:renderStyle},
   {id:"restrictions",cat:"Запреты",title:"Что агенту нельзя говорить",sub:"Только рабочие запреты. Красное = нельзя. Можно добавить своё.",render:renderRestrictions},
   {id:"flow",cat:"Сценарий",title:"Этапы диалога с клиентом",sub:"Как агент ведёт разговор шаг за шагом. Меняйте порядок, редактируйте, добавляйте.",render:renderFlow},
-  {id:"faq_q",cat:"FAQ · вопросы",title:"Какие вопросы задают чаще всего?",sub:"Отметьте частые вопросы клиентов и добавьте свои. Ответы напишем на следующем шаге.",render:renderFaqQ},
-  {id:"faq_a",cat:"FAQ · ответы",title:"Ответы на вопросы",sub:"Впишите ответы, наговорите голосом 🎤 или сгенерируйте автоматически.",render:renderFaqA},
+  {id:"faq_q",cat:"FAQ",title:"Какие вопросы задают чаще всего?",sub:"Отметьте частые вопросы клиентов и добавьте свои. Ответы напишем на следующем шаге.",render:renderFaqQ,part:[1,2]},
+  {id:"faq_a",cat:"FAQ",title:"Ответы на вопросы",sub:"Впишите ответы, наговорите голосом 🎤 или сгенерируйте автоматически.",render:renderFaqA,part:[2,2]},
   {id:"handoff",cat:"Передача менеджеру",title:"Когда подключать живого человека",sub:"В каких случаях передавать диалог, как отвечать и куда слать уведомление.",render:renderHandoff},
   {id:"data",cat:"Данные",title:"Что собрать у клиента",sub:"Эти данные уйдут менеджеру/в CRM при успехе. Включите нужное.",render:renderData},
   {id:"finish",cat:"Готово",title:"Ваш агент собран 🎉",sub:"Проверьте промпт и протестируйте агента в чате.",render:renderFinish}
@@ -511,7 +515,8 @@ function render(){
   if(!s.bare){
     const contentIdx=STEPS.slice(0,state.step+1).filter(x=>!x.bare&&x.id!=="finish").length;
     const kicker = s.id==="finish" ? "🎉 Готово" : `Шаг ${contentIdx} · ${s.cat}`;
-    html+=`<div class="step-head"><div class="step-kicker">${kicker}</div><div class="step-title">${s.title}</div><div class="step-sub">${s.sub}</div></div><div class="step-body" id="stepBody"></div>`;
+    const substep = s.part ? `<span class="substep">${Array.from({length:s.part[1]},(_,i)=>`<i class="${i<s.part[0]?'on':''}"></i>`).join("")}<b>шаг ${s.part[0]} из ${s.part[1]}</b></span>` : "";
+    html+=`<div class="step-head"><div class="step-kicker">${kicker}${substep}</div><div class="step-title">${s.title}</div><div class="step-sub">${s.sub}</div></div><div class="step-body" id="stepBody"></div>`;
   }
   stage.innerHTML=html;
   const body=s.bare?stage:document.getElementById("stepBody");
@@ -1085,11 +1090,12 @@ function renderRestrictions(el){
   el.innerHTML=`<div id="restrList"></div>
     <div class="add-row"><input type="text" id="restrAdd" placeholder="Добавить свой запрет..."><button class="btn btn-ghost" id="restrAddBtn">Добавить</button></div>
     ${magicBtn("restrMagic")}
-    <div class="hintbox">🚫 Красный тумблер = «нельзя». Выключите то, что вашему бизнесу разрешено.</div>`;
+    <div class="hintbox">🚫 Красный тумблер = «нельзя». Выключите то, что вашему бизнесу разрешено. Двойной клик по тексту — отредактировать формулировку.</div>`;
   const list=el.querySelector("#restrList");
   function draw(){list.innerHTML="";D.restrictions.forEach((r,i)=>{const d=document.createElement("div");d.className="toggle-item";
     d.innerHTML=`<span class="badge ${r.on?"no":"ok"}">${r.on?"нельзя":"можно"}</span><span class="txt">${esc(r.text)}</span><div class="sw ${r.on?"on":""}"></div><button class="del">×</button>`;
     d.querySelector(".sw").onclick=()=>{r.on=!r.on;draw();updateAgent();};
+    editableText(d.querySelector(".txt"),nv=>{if(nv)r.text=nv;draw();});
     d.querySelector(".del").onclick=()=>{D.restrictions.splice(i,1);draw();updateAgent();};list.appendChild(d);});}
   draw();
   const addI=el.querySelector("#restrAdd");
@@ -1224,7 +1230,9 @@ function renderHandoff(el){
   const trg=el.querySelector("#trgList");
   function drawTrg(){trg.innerHTML="";D.escalate.triggers.forEach((t,i)=>{const d=document.createElement("div");d.className="toggle-item";
     d.innerHTML=`<div class="sw pos ${t.on?'on':''}"></div><span class="txt">${esc(t.text)}</span><button class="del">×</button>`;
-    d.querySelector(".sw").onclick=()=>{t.on=!t.on;drawTrg();};d.querySelector(".del").onclick=()=>{D.escalate.triggers.splice(i,1);drawTrg();};trg.appendChild(d);});}
+    d.querySelector(".sw").onclick=()=>{t.on=!t.on;drawTrg();};
+    editableText(d.querySelector(".txt"),nv=>{if(nv)t.text=nv;drawTrg();});
+    d.querySelector(".del").onclick=()=>{D.escalate.triggers.splice(i,1);drawTrg();};trg.appendChild(d);});}
   drawTrg();
   const trgAdd=el.querySelector("#trgAdd");const addTrg=()=>{const v=trgAdd.value.trim();if(!v)return;D.escalate.triggers.push({text:v,on:true});trgAdd.value="";drawTrg();};
   el.querySelector("#trgAddBtn").onclick=addTrg;trgAdd.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();addTrg();}});
@@ -1263,7 +1271,8 @@ function renderHandoff(el){
   // 4 что отправить
   const sl=el.querySelector("#sendList");
   function drawSend(){sl.innerHTML="";D.escalate.sendFields.forEach((f,i)=>{const c=document.createElement("span");c.className="dchip"+(f.on?" on":"");
-    c.innerHTML=`${esc(f.text)} <span class="x">${f.on?"✓":"+"}</span>`;c.onclick=()=>{f.on=!f.on;drawSend();};sl.appendChild(c);});}
+    c.innerHTML=`<span class="txt">${esc(f.text)}</span> <span class="x">${f.on?"✓":"+"}</span>`;c.onclick=()=>{f.on=!f.on;drawSend();};
+    editableText(c.querySelector(".txt"),nv=>{if(nv)f.text=nv;drawSend();});sl.appendChild(c);});}
   drawSend();
 }
 
@@ -1273,11 +1282,12 @@ function renderData(el){
   if(!D._dataInit){ D.dataFields=(S.data_fields||DEFAULTS.data_fields).map(t=>({text:t,on:true})); D._dataInit=true; }
   el.innerHTML=`<div class="chips" id="dataChips" style="margin-bottom:14px"></div>
     <div class="add-row"><input type="text" id="dataAdd" placeholder="Добавить поле (напр. e-mail)..."><button class="btn btn-ghost" id="dataAddBtn">Добавить</button></div>
-    <div class="hintbox">📤 Включённые поля агент постарается собрать и передать вам при успехе (функция save_lead).</div>`;
+    <div class="hintbox">📤 Включённые поля агент постарается собрать и передать вам при успехе (функция save_lead). Двойной клик по названию — переименовать, правый клик — удалить.</div>`;
   const box=el.querySelector("#dataChips");
   function draw(){box.innerHTML="";D.dataFields.forEach((f,i)=>{const c=document.createElement("span");c.className="dchip"+(f.on?" on":"");
-    c.innerHTML=`${esc(f.text)} <span class="x">${f.on?"✓":"+"}</span>`;
+    c.innerHTML=`<span class="txt">${esc(f.text)}</span> <span class="x">${f.on?"✓":"+"}</span>`;
     c.onclick=()=>{f.on=!f.on;draw();updateAgent();};
+    editableText(c.querySelector(".txt"),nv=>{if(nv)f.text=nv;draw();updateAgent();});
     c.oncontextmenu=(e)=>{e.preventDefault();D.dataFields.splice(i,1);draw();updateAgent();};box.appendChild(c);});}
   draw();
   const addI=el.querySelector("#dataAdd");
@@ -1304,7 +1314,42 @@ function renderRules(el){
 }
 
 /* ================= ШАГ: ГОТОВО ================= */
+const FINISH_STAGES=["Собираю данные о компании…","Настраиваю сценарий и стиль общения…","Собираю функции агента (save_lead, escalate_to_human)…","Подключаю каналы и интеграции…","Финальная проверка промпта…"];
+const FINISH_QUOTES=[
+  "💡 Чем конкретнее FAQ — тем реже агенту приходится звать менеджера.",
+  "💡 Хорошо настроенный агент закрывает часть заявок вообще без участия человека.",
+  "💡 Совет: заходите и правьте промпт вручную в любой момент — это просто текст.",
+  "💡 Проверьте тест-чат на редких вопросах клиентов — так находятся дыры в FAQ."
+];
+let finishGen=0;
 function renderFinish(el){
+  if(state._finishReady){ renderFinishContent(el); return; }
+  const myGen=++finishGen;
+  el.innerHTML=`<div style="text-align:center;padding:52px 20px 44px">
+    <div class="ava" style="width:76px;height:76px;font-size:38px;margin:0 auto 22px;animation:pulse 1.3s ease-in-out infinite">${state.data.avatar}</div>
+    <div style="font-size:19px;font-weight:600;color:var(--text-strong);margin-bottom:8px">Собираем вашего агента…</div>
+    <div id="finLoadStage" style="color:var(--muted);font-size:14px;margin-bottom:22px;min-height:20px">Секунду…</div>
+    <div style="max-width:320px;margin:0 auto 26px;height:6px;border-radius:9999px;background:var(--fill-subtle);overflow:hidden"><i id="finLoadBar" style="display:block;height:100%;width:4%;background:var(--primary);transition:width .5s ease"></i></div>
+    <div class="hintbox" id="finQuote" style="max-width:400px;margin:0 auto;text-align:left"></div>
+  </div>`;
+  const stageEl=()=>document.getElementById("finLoadStage"),bar=()=>document.getElementById("finLoadBar");
+  const qEl=document.getElementById("finQuote");
+  qEl.textContent=FINISH_QUOTES[Math.floor(Math.random()*FINISH_QUOTES.length)];
+  let i=0;
+  const tick=()=>{
+    if(myGen!==finishGen) return; // за это время начался новый цикл — эта цепочка мертва
+    const se=stageEl(); if(!se) return; // ушли с этого шага — молча останавливаемся
+    if(i<FINISH_STAGES.length){
+      se.textContent=FINISH_STAGES[i]; const b=bar(); if(b)b.style.width=Math.round(((i+1)/FINISH_STAGES.length)*100)+"%";
+      i++; setTimeout(tick,1100+Math.random()*500);
+    }else{
+      state._finishReady=true;
+      if(STEPS[state.step]&&STEPS[state.step].id==="finish") renderFinishContent(el);
+    }
+  };
+  setTimeout(tick,300);
+}
+function renderFinishContent(el){
   confetti();
   const prompt=buildPrompt();
   el.innerHTML=`
