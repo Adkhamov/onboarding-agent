@@ -197,6 +197,20 @@
   .intg-btn.off{background:var(--error-tint);color:var(--error);border:1px solid transparent}
   .intg-btn.off:hover{background:var(--error-tint)}
   .intg-btn.sent{background:var(--success-tint);color:var(--success);cursor:default}
+  /* карточки функций (финал) */
+  .fn-card{border:1px solid var(--border);border-radius:var(--r-xl);background:var(--surface);box-shadow:var(--sh-1);padding:16px;margin-bottom:12px}
+  .fn-card-h{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+  .fn-card-h code{font-family:'Geist Mono Variable',ui-monospace,monospace;font-weight:600;color:var(--text-strong);font-size:14px}
+  .fn-card-row{margin-bottom:10px}
+  .fn-card-row:last-child{margin-bottom:0}
+  .fn-card-row>b{display:block;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--quiet);margin-bottom:4px}
+  .fn-card-row>div{font-size:13px;color:var(--text)}
+  .fn-table{width:100%;border-collapse:collapse;font-size:13px}
+  .fn-table td{padding:5px 8px 5px 0;border-bottom:1px solid var(--border);vertical-align:top}
+  .fn-table tr:last-child td{border-bottom:none}
+  .fn-table td:first-child{white-space:nowrap;width:1%}
+  .fn-table code{font-family:'Geist Mono Variable',ui-monospace,monospace;color:var(--primary);font-size:12px;background:var(--brand-tint-soft);padding:1px 5px;border-radius:4px}
+  .fn-table .req{font-size:10px;color:var(--error);font-weight:600}
   /* источники */
   .src-add{display:flex;gap:8px;margin-bottom:8px}
   .src-add select{width:112px;flex:none;height:38px}
@@ -244,6 +258,10 @@
   .cl-item.done{color:var(--text)}
   .cl-item.done .m{background:var(--success);border-color:var(--success);color:#fff}
   .encourage{margin-top:16px;padding:10px 12px;border-radius:var(--r-lg);background:var(--success-tint);color:var(--success);font-size:12px}
+  .facts{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;text-align:left}
+  .facts:empty{display:none}
+  .fact-chip{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:500;padding:4px 9px;border-radius:9999px;background:var(--brand-tint-soft);color:var(--text-strong);border:1px solid var(--brand-tint);animation:fact-in .3s ease}
+  @keyframes fact-in{from{opacity:0;transform:translateY(3px) scale(.96)}to{opacity:1;transform:none}}
 
   /* ---------- welcome ---------- */
   .welcome{align-items:center;justify-content:center;text-align:center;padding:56px 28px}
@@ -327,6 +345,7 @@
     <div class="strength"><i id="pBar"></i></div>
     <div class="strength-val"><span id="pPct">0%</span> готовности</div>
     <div class="checklist" id="pList"></div>
+    <div class="facts" id="pFacts"></div>
     <div class="encourage" id="pEnc">Пройдём вместе — на каждом шаге агент становится умнее ✨</div>
   </div>
 </div>
@@ -443,10 +462,10 @@ const state={
   generated:false,
   parsing:false,
   data:{
-    niche:"",channels:[],currency:"",timezone:"",
+    niche:"",nicheDetail:"",channels:[],currency:"",timezone:"",
     companyName:"",sphere:"",about:"",agentName:"",avatar:"🤖",
     goal:"",style:"",styleP:{emoji:"some",emojiSet:[],address:"вы",tags:[]},restrictions:[],faq:[],unknown:"",dataFields:[],
-    hours:"",geo:"",pricing:"",langs:"",disclose:"open",stoptopics:"",
+    hours:"",geo:"",pricing:"",langs:DEFAULTS.languages,disclose:"soft",stoptopics:DEFAULTS.stop_topics,
     escalate:{triggers:[],notify:[],sendFields:[]},telegram:{chat_id:null,name:""},
     stages:[],integrations:[],integrationRequests:[]
   }
@@ -460,7 +479,6 @@ const STEPS=[
   {id:"materials",cat:"Материалы",title:"Файлы и текст о компании",sub:"Скрипты, прайсы, описания услуг — всё, что поможет агенту. Необязательно.",render:renderMaterials},
   {id:"channels",cat:"Каналы",title:"Где будет работать агент?",sub:"Пока мы собираем данные из ваших источников — выберите канал(ы). От этого зависит логика диалога.",render:renderChannels},
   {id:"integrations",cat:"Интеграции",title:"Что подключим к агенту?",sub:"CRM, календарь, оплаты и другие сервисы — куда агент передаёт заявки и что умеет.",render:renderIntegrations},
-  {id:"rules",cat:"Язык и правила",title:"Языки и правила общения",sub:"На каких языках общаться, раскрывать ли, что это ИИ, и стоп-темы.",render:renderRules},
   {id:"basics",cat:"О компании",title:"Расскажем, кто ваш агент",sub:"Часть полей мы уже заполнили из ваших источников — проверьте, что всё верно, и поправьте.",render:renderBasics},
   {id:"prices",cat:"Цены",title:"Цены и прайс",sub:"Что агент может называть клиентам, а что — только после расчёта.",render:renderPrices},
   {id:"goal",cat:"Цель",title:"К чему агент ведёт клиента?",sub:"Главное целевое действие (КЭВ). Выберите вариант, дополните двойным кликом или впишите свой.",render:renderGoal},
@@ -477,7 +495,8 @@ const CONTENT_STEPS=STEPS.filter(s=>s.id!=="welcome"&&s.id!=="finish").length;
 
 /* ================= РЕНДЕР КАРКАСА ================= */
 const stage=document.getElementById("stage");
-function go(n){ state.step=Math.max(0,Math.min(STEPS.length-1,n)); render(); }
+let maxStep=0;
+function go(n){ state.step=Math.max(0,Math.min(STEPS.length-1,n)); if(state.step>maxStep)maxStep=state.step; render(); }
 function next(){ if(STEPS[state.step].onNext) STEPS[state.step].onNext(); go(state.step+1); }
 function back(){ go(state.step-1); }
 
@@ -519,16 +538,15 @@ function updateProgress(){
 }
 
 /* ================= ПАНЕЛЬ АГЕНТА ================= */
+/* Только то, что реально попадает в промпт/функции — сгруппировано по смыслу,
+   а не по шагам. «Источники» не в списке: это средство, а не часть результата. */
 const STRENGTH=[
-  {k:"sources",w:10,label:"Источники",step:"sources",test:()=>state.sources.length>0||state.parsedContext},
-  {k:"companyName",w:12,label:"Название",step:"basics",test:()=>state.data.companyName.trim()},
-  {k:"about",w:12,label:"О компании",step:"basics",test:()=>state.data.about.trim()},
-  {k:"goal",w:14,label:"Цель",step:"goal",test:()=>state.data.goal.trim()},
-  {k:"style",w:12,label:"Стиль",step:"style",test:()=>state.data.style.trim()},
-  {k:"restrictions",w:10,label:"Запреты",step:"restrictions",test:()=>state.data.restrictions.length>0},
-  {k:"faq",w:14,label:"FAQ",step:"faq_q",test:()=>state.data.faq.length>0},
-  {k:"data",w:10,label:"Данные",step:"data",test:()=>state.data.dataFields.length>0},
-  {k:"rules",w:6,label:"Язык/правила",step:"rules",test:()=>state.data.langs.trim()}
+  {k:"profile",w:20,label:"О компании",step:"basics",test:()=>state.data.companyName.trim()&&state.data.about.trim()&&state.data.langs.trim()},
+  {k:"channels",w:15,label:"Каналы и интеграции",step:"channels",test:()=>state.data.channels.length>0},
+  {k:"goalflow",w:20,label:"Цель и сценарий",step:"goal",test:()=>state.data.goal.trim()&&state.data.stages.length>0},
+  {k:"voice",w:15,label:"Стиль и запреты",step:"style",test:()=>state.data.style.trim()&&state.data.restrictions.length>0},
+  {k:"support",w:20,label:"FAQ и передача менеджеру",step:"faq_q",test:()=>state.data.faq.length>0&&(state.data.escalate.triggers||[]).some(t=>t.on)},
+  {k:"data",w:10,label:"Данные для заявки",step:"data",test:()=>state.data.dataFields.length>0}
 ];
 function agentScore(){ let s=0; STRENGTH.forEach(x=>{if(x.test())s+=x.w;}); return Math.min(100,s); }
 function tierFor(p){ if(p<20)return"Новорождённый";if(p<45)return"Ученик";if(p<70)return"Уверенный";if(p<95)return"Профи";return"Готов к бою 🔥"; }
@@ -543,12 +561,31 @@ function updateAgent(){
   const list=document.getElementById("pList"); list.innerHTML="";
   STRENGTH.forEach(x=>{const done=!!x.test();const d=document.createElement("div");d.className="cl-item"+(done?" done":"")+(x.step?" jump":"");
     d.innerHTML=`<span class="m">${done?"✓":""}</span>${x.label}`;
-    if(x.step){const idx=STEPS.findIndex(s=>s.id===x.step);if(idx>0){d.title="Перейти к шагу";d.onclick=()=>go(idx);}}
+    if(x.step){const idx=STEPS.findIndex(s=>s.id===x.step);
+      if(idx>0&&idx<=maxStep){d.title="Перейти к шагу";d.onclick=()=>go(idx);}
+      else if(idx>0){d.title="Откроется, когда дойдёте до этого шага";d.style.cursor="default";}}
     list.appendChild(d);});
+  renderFacts();
   const enc=document.getElementById("pEnc");
   enc.textContent = p>=100?"Агент полностью готов — можно тестировать! 🎉" : p>lastScore?"Отлично, агент стал сильнее! 💪" : "Заполняйте шаги — сила агента растёт ✨";
   if(p>lastScore){const a=document.getElementById("pAva");a.classList.remove("up");void a.offsetWidth;a.classList.add("up");}
   lastScore=p;
+}
+/* растущий "профиль" агента — конкретные факты, а не только галочки */
+function renderFacts(){
+  const D=state.data,box=document.getElementById("pFacts");if(!box)return;
+  const trunc=(s,n)=>s.length>n?s.slice(0,n-1)+"…":s;
+  const CH_LABEL={whatsapp:"WhatsApp",instagram:"Instagram",telegram:"Telegram",site:"Сайт"};
+  const facts=[];
+  if(D.niche) facts.push("🏷 "+trunc(D.niche+(D.nicheDetail?" · "+D.nicheDetail:""),34));
+  if(state.sources&&state.sources.length) facts.push("📚 Источников: "+state.sources.length+(state.generated?" ✓":""));
+  if(D.companyName&&D.agentName) facts.push("🏢 "+trunc(D.companyName,26));
+  if(D.channels&&D.channels.length) facts.push("💬 "+D.channels.map(id=>CH_LABEL[id]||id).join(", "));
+  if(D.integrations&&D.integrations.length) facts.push("🔌 "+D.integrations.map(id=>{const it=INTEGRATIONS.find(x=>x.id===id);return it?it.name:id;}).join(", "));
+  if(D.langs) facts.push("🌐 "+D.langs);
+  if(D.faq&&D.faq.length) facts.push("❓ "+D.faq.length+" вопросов");
+  if(D.dataFields&&D.dataFields.filter(f=>f.on).length) facts.push("📋 "+D.dataFields.filter(f=>f.on).length+" полей заявки");
+  box.innerHTML=facts.map(f=>`<span class="fact-chip">${esc(f)}</span>`).join("");
 }
 
 /* ================= WELCOME ================= */
@@ -568,22 +605,29 @@ function renderWelcome(el){
 }
 
 /* ================= ШАБЛОН / НИША ================= */
-const TEMPLATES=[
-  {id:"edu",icon:"🎓",title:"Поступление за рубеж",desc:"Агентство по подготовке и поступлению в зарубежные вузы",niche:"Агентство по подготовке к поступлению за рубеж"},
-  {id:"tour",icon:"✈️",title:"Туристическое агентство",desc:"Подбор и продажа туров, бронирование поездок",niche:"Туристическое агентство"},
-  {id:"other",icon:"🏢",title:"Другое / свой бизнес",desc:"Универсальный сценарий под любую нишу",niche:""}
-];
+const NICHE_LIST=["Стоматология","Медицинский центр / клиника","Салон красоты","Барбершоп","Фитнес-клуб / зал","Онлайн-школа / курсы","Языковая школа","Подготовка к поступлению за рубеж","Автосервис","Автосалон","Юридические услуги","Бухгалтерские услуги","Агентство недвижимости","Ремонт и строительство","Туристическое агентство","Ресторан / кафе","Доставка еды","Интернет-магазин","Клининговая компания","Event-агентство","Фотостудия","Ветеринарная клиника","Грузоперевозки / логистика","IT-компания / разработка","Маркетинговое агентство","Свадебное агентство","Детский центр / сад","Спа и массаж","Стоматологическая лаборатория","Другое"];
 function renderTemplate(el){
   const D=state.data;
-  el.innerHTML=`<div id="tplList"></div>
-    <div class="field" style="margin-top:6px"><label class="lbl">Или впишите свою нишу</label><input type="text" id="tplCustom" value="${escA(D.niche)}" placeholder="Напр. стоматология, барбершоп, автосервис..."></div>
-    <div class="hintbox">🧭 От ниши зависят предложенные вопросы, стиль и запреты. Позже всё можно поменять.</div>`;
-  const box=el.querySelector("#tplList"),custom=el.querySelector("#tplCustom");
-  TEMPLATES.forEach(t=>{const sel=D._tpl===t.id;const o=document.createElement("label");o.className="opt"+(sel?" sel":"");
-    o.innerHTML=`<div class="ot"><span style="font-size:20px;margin-right:10px">${t.icon}</span><span class="ot-text"><b>${t.title}</b><div style="color:var(--muted);font-size:13px;font-weight:400;margin-top:2px">${t.desc}</div></span><span class="oradio"></span></div>`;
-    o.onclick=()=>{D._tpl=t.id;D.niche=t.niche;custom.value=t.niche;box.querySelectorAll(".opt").forEach(x=>x.classList.remove("sel"));o.classList.add("sel");
-      if(t.id==="edu"||t.id==="tour")toast(t.title+": пока по стандартному сценарию");};box.appendChild(o);});
-  custom.addEventListener("input",()=>{D.niche=custom.value.trim();D._tpl="";box.querySelectorAll(".opt").forEach(x=>x.classList.remove("sel"));});
+  el.innerHTML=`
+    <div class="field"><label class="lbl">Ниша / сфера бизнеса</label>
+      <input type="text" id="tplInput" list="nicheList" value="${escA(D.niche)}" placeholder="Начните вводить: стоматология, онлайн-школа, турагентство...">
+      <datalist id="nicheList">${NICHE_LIST.map(n=>`<option value="${escA(n)}">`).join("")}</datalist>
+    </div>
+    <div class="field"><label class="lbl">Уточните специализацию <span style="color:var(--quiet);font-weight:400">(необязательно, но полезно)</span></label>
+      <div class="hint">Например: «подготовка к IELTS и поступление в вузы Европы» или «семейные туры по Азии». Чем точнее — тем точнее вопросы и стиль дальше.</div>
+      <input type="text" id="tplDetail" value="${escA(D.nicheDetail||"")}" placeholder="Чем именно занимаетесь внутри этой ниши?"></div>
+    <div class="hintbox">🧭 От ниши и специализации зависят предложенные вопросы, стиль и запреты. Позже всё можно поменять.</div>`;
+  const inp=el.querySelector("#tplInput"),det=el.querySelector("#tplDetail");
+  inp.addEventListener("input",()=>{D.niche=inp.value.trim();updateAgent();});
+  det.addEventListener("input",()=>{D.nicheDetail=det.value.trim();updateAgent();});
+  STEPS[state.step].onNext=()=>{ if(D.niche||D.nicheDetail) kickoffEarlyMagic(); };
+}
+function kickoffEarlyMagic(){
+  if(state.generated||state._earlyMagicDone) return;
+  const hasKey=health.keys&&(provider==="anthropic"?health.keys.anthropic:health.keys.openai);
+  if(!hasKey) return;
+  state._earlyMagicDone=true;
+  generateSuggestions("").catch(()=>{});
 }
 
 /* ================= КАНАЛЫ ================= */
@@ -836,9 +880,10 @@ const GEN_SYS=`Ты помогаешь настроить ИИ-агента пр
 Правила:
 - company_name, about, sphere, address, working_hours, prices — ТОЛЬКО из предоставленных данных; если нет данных — оставь "".
 - company_name — это РЕАЛЬНОЕ название бизнеса. НЕ бери название каталога/справочника/агрегатора и не бери заголовок вкладки браузера (например «2ГИС», «Otzyv», «Instagram»). Если названия в источниках расходятся — выбери то, что похоже на официальное имя компании. Если уверенности нет — оставь "".
+- prices — самое важное поле для клиента. Внимательно вычитай данные и найди КОНКРЕТНЫЕ цифры (цены, тарифы, «от X ₸/₽/$», прайс-лист), даже если они упомянуты вскользь или в разных источниках. Приведи их списком с валютой. Если цифр нет вообще — оставь "", не обобщай и не выдумывай.
 - agent_names: 3 коротких имени-варианта для ассистента.
-- goals: 4 реалистичных целевых действия (КЭВ) для этой сферы.
-- styles: 3 разных тона. Пиши по-человечески, эмодзи — уместные и редкие (не в каждом сообщении). Один из вариантов — casual маленькими буквами. example — первое сообщение агента без канцелярита.
+- goals: 4 реалистичных целевых действия (КЭВ) для этой сферы и специализации.
+- styles: тон/voice — второе по важности после цен. Дай 3 РАЗНЫХ тона, реалистичных именно для этой ниши и специализации (например, мед. клиника ≠ барбершоп ≠ турагентство по звучанию). Пиши по-человечески, эмодзи — уместные и редкие (не в каждом сообщении). Один из вариантов — casual маленькими буквами. example — живое первое сообщение агента без канцелярита, отражающее подачу именно этого бизнеса.
 - restrictions: 5-6 ТОЛЬКО рабочих запретов (нельзя называть точную цену без уточнения; обещать результат/сроки; сравнивать с конкурентами; давать мед/юр советы; выдумывать факты). Без банальностей вроде «быть вежливым».
 - faq: 8-10 реальных частых вопросов клиентов сферы с короткими ответами (используй факты из данных, где есть).
 - unknown_options: 3 варианта поведения, если агент не знает ответа.
@@ -846,7 +891,8 @@ const GEN_SYS=`Ты помогаешь настроить ИИ-агента пр
 - languages: вероятные языки общения. stop_topics: темы, которых агент избегает.
 Только JSON, на русском.`;
 async function generateSuggestions(context){
-  const nichePrefix=state.data.niche?("Ниша бизнеса: "+state.data.niche+"\n\n"):"";
+  const nicheLine=[state.data.niche?("Ниша бизнеса: "+state.data.niche):"",state.data.nicheDetail?("Специализация: "+state.data.nicheDetail):""].filter(Boolean).join(". ");
+  const nichePrefix=nicheLine?(nicheLine+"\n\n"):"";
   const txt=await callLLMOnce(GEN_SYS,nichePrefix+"Данные о бизнесе:\n\n"+(context||"(данных мало, опирайся на нишу и общую логику)"),"suggestions",3000);
   const m=txt.match(/\{[\s\S]*\}/); if(!m)throw new Error("no json");
   const g=JSON.parse(m[0]);
@@ -871,8 +917,8 @@ async function generateSuggestions(context){
   if(g.working_hours&&!D.hours)D.hours=g.working_hours;
   if(g.prices&&!D.pricing)D.pricing=g.prices;
   if(!D.agentName&&S.agent_names[0])D.agentName=S.agent_names[0];
-  if(!D.langs)D.langs=S.languages;
-  if(!D.stoptopics)D.stoptopics=S.stop_topics;
+  if(S.languages)D.langs=S.languages;
+  if(S.stop_topics)D.stoptopics=S.stop_topics;
 }
 async function callLLMOnce(sys,user,section,maxTok){
   maxTok=maxTok||1500;
@@ -895,6 +941,7 @@ function renderBasics(el){
       <div class="field"><label class="lbl">Имя агента</label><input type="text" id="f_agent" value="${escA(D.agentName)}" placeholder="Айя"></div>
       <div class="field"><label class="lbl">Аватар агента</label><div class="chips" id="avaPick"></div></div>
     </div>
+    <div class="field"><label class="lbl">На каких языках общается</label><input type="text" id="f_langs" value="${escA(D.langs)}" placeholder="Русский, казахский"></div>
     <div class="row2">
       <div class="field"><label class="lbl">Город / адрес</label><input type="text" id="f_geo" value="${escA(D.geo)}" placeholder="Алматы, ул. ..."></div>
       <div class="field"><label class="lbl">График работы</label><input type="text" id="f_hours" value="${escA(D.hours)}" placeholder="Пн–Сб 9:00–20:00"></div>
@@ -923,7 +970,7 @@ function renderBasics(el){
     c.onclick=()=>{D.avatar=a;ap.querySelectorAll(".dchip").forEach(x=>x.classList.remove("on"));c.classList.add("on");updateAgent();};ap.appendChild(c);});
   // биндинги
   bind(el,"#f_name",v=>D.companyName=v);bind(el,"#f_about",v=>D.about=v);bind(el,"#f_agent",v=>D.agentName=v);
-  bind(el,"#f_geo",v=>D.geo=v);bind(el,"#f_hours",v=>D.hours=v);
+  bind(el,"#f_geo",v=>D.geo=v);bind(el,"#f_hours",v=>D.hours=v);bind(el,"#f_langs",v=>D.langs=v);
   wireMagic(el,"basicsMagic");
   STEPS[state.step].onNext=()=>{}; // значения уже в state через bind
 }
@@ -1266,20 +1313,40 @@ function renderFinish(el){
       <div class="agent-name" style="font-size:18px">${esc(state.data.agentName||"Ваш агент")} готов!</div>
       <div class="agent-tier">Сила агента: ${agentScore()}% · ${tierFor(agentScore())}</div>
     </div>
-    <div class="seg" id="finTabs" style="margin-bottom:16px"><button data-t="chat" class="active">💬 Тест-чат</button><button data-t="prompt">📄 Промпт</button></div>
-    <div id="finChat"></div>
-    <div id="finPrompt" style="display:none"><textarea id="promptBox" style="min-height:320px;font-family:'Geist Mono Variable',ui-monospace,Menlo,monospace;font-size:12px">${esc(prompt)}</textarea>
+    <div class="hint" style="text-align:center;margin:-6px 0 16px">Результат — промпт и функции ниже. Тест-чат — просто чтобы проверить, как это работает.</div>
+    <div class="seg" id="finTabs" style="margin-bottom:16px"><button data-t="prompt" class="active">📄 Промпт</button><button data-t="functions">⚙️ Функции</button><button data-t="chat">💬 Тест-чат</button></div>
+    <div id="finPrompt"><textarea id="promptBox" style="min-height:320px;font-family:'Geist Mono Variable',ui-monospace,Menlo,monospace;font-size:12px">${esc(prompt)}</textarea>
       <div style="display:flex;gap:8px;margin-top:10px"><button class="btn btn-ghost" id="copyPrompt">Скопировать</button><button class="btn btn-primary" id="saveAgentFin">💾 Сохранить агента</button><button class="btn btn-ghost" id="restart">↺ Заново</button></div></div>
+    <div id="finFunctions" style="display:none"></div>
+    <div id="finChat" style="display:none"></div>
     <div class="footer-nav"><button class="btn btn-ghost" id="backBtn">← Назад</button><span></span></div>`;
   el.querySelector("#backBtn").onclick=back;
   el.querySelector("#finTabs").querySelectorAll("button").forEach(b=>b.onclick=()=>{
     el.querySelectorAll("#finTabs button").forEach(x=>x.classList.remove("active"));b.classList.add("active");
-    el.querySelector("#finChat").style.display=b.dataset.t==="chat"?"block":"none";
-    el.querySelector("#finPrompt").style.display=b.dataset.t==="prompt"?"block":"none";});
+    el.querySelector("#finPrompt").style.display=b.dataset.t==="prompt"?"block":"none";
+    el.querySelector("#finFunctions").style.display=b.dataset.t==="functions"?"block":"none";
+    el.querySelector("#finChat").style.display=b.dataset.t==="chat"?"block":"none";});
   el.querySelector("#copyPrompt").onclick=()=>{const t=el.querySelector("#promptBox");t.select();document.execCommand("copy");toast("Промпт скопирован");};
   el.querySelector("#saveAgentFin").onclick=openAgents;
   el.querySelector("#restart").onclick=()=>{if(confirm("Начать заново? Введённые данные сбросятся."))location.reload();};
+  renderFunctionsTab(el.querySelector("#finFunctions"));
   renderChat(el.querySelector("#finChat"),prompt);
+}
+function renderFunctionsTab(el){
+  const tools=buildTools();
+  const notifyBits=notifyChannels();
+  el.innerHTML=`<div class="hintbox" style="margin-bottom:14px">⚙️ Это функции (tool calls), которые агент реально вызывает в диалоге — с параметрами, которые он собирает, и условием срабатывания. Собраны из того, что вы настроили на шагах «Данные» и «Передача менеджеру».</div>
+    <div id="fnCards"></div>`;
+  const box=el.querySelector("#fnCards");
+  tools.forEach(t=>{
+    const rows=Object.entries(t.input.properties).map(([k,v])=>`<tr><td><code>${esc(k)}</code>${(t.input.required||[]).includes(k)?' <span class="req">обязат.</span>':''}</td><td>${esc(v.description||v.type)}</td></tr>`).join("");
+    const d=document.createElement("div");d.className="fn-card";
+    d.innerHTML=`<div class="fn-card-h"><code>${t.name}()</code><span class="pill ok">function</span></div>
+      <div class="fn-card-row"><b>Когда срабатывает</b><div>${esc(t.description)}</div></div>
+      <div class="fn-card-row"><b>Параметры</b><table class="fn-table">${rows}</table></div>
+      ${notifyBits.length?`<div class="fn-card-row"><b>Уведомление уходит в</b><div>${notifyBits.map(esc).join(" · ")}</div></div>`:""}`;
+    box.appendChild(d);
+  });
 }
 
 /* ================= ПОСТРОЕНИЕ ПРОМПТА ================= */
@@ -1313,12 +1380,14 @@ function buildPrompt(){
   p+=B("ЕСЛИ НЕ ЗНАЕШЬ ОТВЕТА",(D.unknown||"Не выдумывай ответ.")+"\nНикогда не придумывай факты. Если вопрос вне знаний — честно скажи, что уточнишь у специалиста, и вызови escalate_to_human.");
   const trgList=(D.escalate&&D.escalate.triggers||[]).filter(t=>t.on).map(t=>"   — "+t.text).join("\n");
   const sendF=(D.escalate&&D.escalate.sendFields||[]).filter(f=>f.on).map(f=>f.text).join(", ");
+  const leadParams=Object.entries(buildLeadParams().properties).map(([k,v])=>v.description).join(", ");
+  const notifyBits=notifyChannels();
   p+=`\n\n────────────────────────\n## ФУНКЦИИ
-1) save_lead — оформить заявку менеджеру/в CRM. Вызывай, когда клиент подтвердил целевое действие И собраны обязательные данные (как минимум имя и телефон). После — кратко подтверди клиенту, что заявка принята.
-2) escalate_to_human — передать диалог живому менеджеру. Вызывай в этих случаях:
+1) save_lead(${leadParams}) — оформить заявку менеджеру/в CRM. Вызывай, когда клиент подтвердил целевое действие И собраны эти данные. После — кратко подтверди клиенту, что заявка принята.${notifyBits.length?"\n   Уведомление уходит в: "+notifyBits.join(", ")+".":""}
+2) escalate_to_human(reason, summary, urgency) — передать диалог живому менеджеру. Вызывай в этих случаях:
 ${trgList||"   — клиент просит человека; жалоба/конфликт; вопрос вне знаний; ты не уверен"}
    В поле summary кратко укажи: ${sendF||"суть запроса и причину передачи"}.
-   После вызова: ${D.unknown||"скажи, что уточнишь у специалиста"}. Успокой клиента и скажи, что подключаешь менеджера.`;
+   После вызова: ${D.unknown||"скажи, что уточнишь у специалиста"}. Успокой клиента и скажи, что подключаешь менеджера.${notifyBits.length?"\n   Уведомление уходит в: "+notifyBits.join(", ")+".":""}`;
   const intg=(D.integrations||[]).map(id=>{const it=INTEGRATIONS.find(x=>x.id===id);return it?"- "+it.name+": "+it.desc:"";}).filter(Boolean).join("\n");
   p+=B("ПОДКЛЮЧЁННЫЕ ИНТЕГРАЦИИ",intg?intg+"\n\nПри успешной заявке фиксируй данные клиента в подключённых CRM (через save_lead). Используй возможности интеграций по ходу диалога, когда это уместно.":"");
   p+=`\n\n────────────────────────\n## ЗАЩИТА И ГРАНИЦЫ (не нарушать)
@@ -1334,11 +1403,38 @@ ${trgList||"   — клиент просит человека; жалоба/ко
   return p.trim();
 }
 
+/* ================= ФУНКЦИИ (динамически из конфигурации) ================= */
+function buildLeadParams(){
+  const CANON=[{key:"name",match:/имя/i},{key:"phone",match:/телефон/i},{key:"email",match:/e-?mail|почта/i},
+    {key:"request",match:/услуг|запрос/i},{key:"preferred_time",match:/врем|дата/i}];
+  const chosen=(state.data.dataFields||[]).filter(f=>f.on);
+  const properties={}; const required=[]; let n=0;
+  chosen.forEach(f=>{const c=CANON.find(c=>c.match.test(f.text));const key=c?c.key:("field_"+(++n));
+    if(properties[key])return; properties[key]={type:"string",description:f.text}; required.push(key);});
+  if(!Object.keys(properties).length){properties.name={type:"string",description:"Имя клиента"};properties.phone={type:"string",description:"Телефон"};required.push("name","phone");}
+  properties.notes={type:"string",description:"Дополнительные детали из диалога"};
+  return {properties,required};
+}
+function notifyChannels(){
+  const D=state.data; const bits=[];
+  if(D.telegram&&D.telegram.chat_id&&(D.escalate.notify||[]).includes("telegram")) bits.push("Telegram");
+  const crmNames=(D.integrations||[]).map(id=>{const it=INTEGRATIONS.find(x=>x.id===id);return it&&it.name;}).filter(Boolean);
+  if(crmNames.length) bits.push(crmNames.join(", "));
+  return bits;
+}
+function buildTools(){
+  const D=state.data; const lead=buildLeadParams();
+  const crmNames=(D.integrations||[]).map(id=>{const it=INTEGRATIONS.find(x=>x.id===id);return it&&it.name;}).filter(Boolean);
+  const leadDesc=`Вызывай, когда клиент подтвердил «${D.goal||"целевое действие"}» и собраны нужные данные. Передаёт заявку менеджеру${crmNames.length?" и фиксирует в: "+crmNames.join(", "):""}.`;
+  const escTriggers=(D.escalate&&D.escalate.triggers||[]).filter(t=>t.on).map(t=>t.text);
+  const escDesc=`Вызывай когда: ${escTriggers.length?escTriggers.join("; "):"клиент просит человека, жалоба, вопрос вне знаний, или ты не уверен"}. Передаёт диалог живому менеджеру.`;
+  return [
+    {name:"save_lead",description:leadDesc,input:{type:"object",properties:lead.properties,required:lead.required}},
+    {name:"escalate_to_human",description:escDesc,input:{type:"object",properties:{reason:{type:"string",description:"Причина передачи"},summary:{type:"string",description:"Краткое резюме диалога для менеджера"},urgency:{type:"string",enum:["low","medium","high"],description:"Срочность"}},required:["reason","summary"]}}
+  ];
+}
+
 /* ================= ЧАТ ================= */
-const TOOLS=[
-  {name:"save_lead",description:"Вызывай когда клиент подтвердил целевое действие и собраны данные. Передаёт заявку менеджеру/в CRM.",input:{type:"object",properties:{name:{type:"string"},phone:{type:"string"},request:{type:"string"},preferred_time:{type:"string"},notes:{type:"string"}},required:["name","phone","request"]}},
-  {name:"escalate_to_human",description:"Вызывай когда нужно передать диалог живому менеджеру (просьба, жалоба, вопрос вне знаний, неуверенность).",input:{type:"object",properties:{reason:{type:"string"},summary:{type:"string"},urgency:{type:"string",enum:["low","medium","high"]}},required:["reason","summary"]}}
-];
 let chatHistory=[];
 function renderChat(el,sys){
   chatHistory=[];
@@ -1370,7 +1466,7 @@ function renderChat(el,sys){
   inp.addEventListener("input",()=>{inp.style.height="auto";inp.style.height=Math.min(inp.scrollHeight,120)+"px";});
 }
 async function chatAnthropic(sys){
-  const tools=TOOLS.map(t=>({name:t.name,description:t.description,input_schema:t.input}));
+  const tools=buildTools().map(t=>({name:t.name,description:t.description,input_schema:t.input}));
   const messages=chatHistory.map(m=>({role:m.role,content:m.content.map(aBlock)}));
   const r=await fetch("/api/llm",{method:"POST",headers:apiHeaders({"x-provider":"anthropic","x-section":"chat"}),body:JSON.stringify({model:modelSel.value,max_tokens:1024,system:sys,tools,messages})});
   if(!r.ok)throw new Error(await safeErr(r));const d=await r.json();
@@ -1380,7 +1476,7 @@ async function chatAnthropic(sys){
 }
 function aBlock(b){if(b.type==="text")return{type:"text",text:b.text};if(b.type==="tool_use")return{type:"tool_use",id:b.id,name:b.name,input:b.input};if(b.type==="tool_result")return{type:"tool_result",tool_use_id:b.tool_use_id,content:b.content};return b;}
 async function chatOpenAI(sys){
-  const tools=TOOLS.map(t=>({type:"function",function:{name:t.name,description:t.description,parameters:t.input}}));
+  const tools=buildTools().map(t=>({type:"function",function:{name:t.name,description:t.description,parameters:t.input}}));
   const messages=[{role:"system",content:sys},...chatHistory.flatMap(oMsgs)];
   const r=await fetch("/api/llm",{method:"POST",headers:apiHeaders({"x-provider":"openai","x-section":"chat"}),body:JSON.stringify({model:modelSel.value,max_tokens:1024,messages,tools})});
   if(!r.ok)throw new Error(await safeErr(r));const d=await r.json();const msg=d.choices[0].message;
